@@ -25,6 +25,22 @@ export const JOB_CARD_STATUSES = {
   CLOSED: 'CLOSED',
 } as const
 
+export const JOB_CARD_STATUS_LABELS = {
+  [JOB_CARD_STATUSES.OPEN]: 'Open',
+  [JOB_CARD_STATUSES.IN_PROGRESS]: 'In Progress',
+  [JOB_CARD_STATUSES.FROZEN]: 'Frozen',
+  [JOB_CARD_STATUSES.COMPLETED]: 'Completed',
+  [JOB_CARD_STATUSES.CLOSED]: 'Closed',
+} as const
+
+export const JOB_CARD_STATUS_COLORS = {
+  [JOB_CARD_STATUSES.OPEN]: 'secondary',
+  [JOB_CARD_STATUSES.IN_PROGRESS]: 'warning',
+  [JOB_CARD_STATUSES.FROZEN]: 'error',
+  [JOB_CARD_STATUSES.COMPLETED]: 'success',
+  [JOB_CARD_STATUSES.CLOSED]: 'gray',
+} as const
+
 export const PAYMENT_METHODS = {
   CASH: 'CASH',
   CARD: 'CARD',
@@ -39,4 +55,33 @@ export const APPOINTMENT_STATUSES = {
   IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
+} as const
+
+export const INVOICE_STATUSES = {
+  DRAFT: 'DRAFT',
+  SENT: 'SENT',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  CANCELLED: 'CANCELLED',
+} as const
+
+export const PRIORITIES = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  URGENT: 'URGENT',
+} as const
+
+export const PRIORITY_LABELS = {
+  [PRIORITIES.LOW]: 'Low',
+  [PRIORITIES.MEDIUM]: 'Medium',
+  [PRIORITIES.HIGH]: 'High',
+  [PRIORITIES.URGENT]: 'Urgent',
+} as const
+
+export const PRIORITY_COLORS = {
+  [PRIORITIES.LOW]: 'gray',
+  [PRIORITIES.MEDIUM]: 'secondary',
+  [PRIORITIES.HIGH]: 'warning',
+  [PRIORITIES.URGENT]: 'error',
 } as const
