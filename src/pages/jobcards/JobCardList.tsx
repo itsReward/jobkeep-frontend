@@ -25,6 +25,8 @@ import { Card, CardContent, CardHeader, Button, Badge, Input, Loading } from '@/
 
 
 
+
+
 const JobCardList: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [filters, setFilters] = useState<JobCardFilters>({})
