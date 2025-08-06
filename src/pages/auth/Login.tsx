@@ -38,7 +38,7 @@ export const Login: React.FC = () => {
   }
 
   return (
-      <div className="min-h-screen flex">
+      <div className="h-screen flex">
         {/* Left Side - Branding - Hidden on mobile, visible on md+ */}
         <div className="hidden md:flex md:flex-1 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
           {/* Background decorations */}

@@ -61,7 +61,7 @@ function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <Router>
-                <div className="min-h-screen bg-gray-50">
+                <div className="h-screen bg-gray-50 overflow-hidden">
                     <Routes>
                         {/* Public Routes */}
                         <Route
@@ -188,49 +188,46 @@ function App() {
                                     <div className="p-6 text-center">
                                         <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
                                         <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
-                                        <Navigate to="/dashboard" replace />
+                                        <button
+                                            onClick={() => window.history.back()}
+                                            className="text-primary-600 hover:text-primary-500"
+                                        >
+                                            Go back
+                                        </button>
                                     </div>
                                 </ProtectedRoute>
                             }
                         />
                     </Routes>
+
+                    {/* Toast notifications */}
+                    <Toaster
+                        position="top-right"
+                        toastOptions={{
+                            duration: 4000,
+                            style: {
+                                background: '#fff',
+                                color: '#374151',
+                                borderRadius: '0.5rem',
+                                border: '1px solid #e5e7eb',
+                            },
+                            success: {
+                                style: {
+                                    border: '1px solid #10b981',
+                                },
+                            },
+                            error: {
+                                style: {
+                                    border: '1px solid #ef4444',
+                                },
+                            },
+                        }}
+                    />
                 </div>
 
-                {/* Toast notifications */}
-                <Toaster
-                    position="top-right"
-                    toastOptions={{
-                        duration: 4000,
-                        style: {
-                            background: '#ffffff',
-                            color: '#374151',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                            padding: '16px',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                        },
-                        success: {
-                            iconTheme: {
-                                primary: '#10B981',
-                                secondary: '#ffffff',
-                            },
-                        },
-                        error: {
-                            iconTheme: {
-                                primary: '#EF4444',
-                                secondary: '#ffffff',
-                            },
-                        },
-                    }}
-                />
+                {/* React Query DevTools (only in development) */}
+                {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
             </Router>
-
-            {/* React Query Devtools - only in development */}
-            {process.env.NODE_ENV === 'development' && (
-                <ReactQueryDevtools initialIsOpen={false} />
-            )}
         </QueryClientProvider>
     )
 }

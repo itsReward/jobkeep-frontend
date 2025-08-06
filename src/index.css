@@ -12,11 +12,26 @@
 
   html {
     scroll-behavior: smooth;
+    height: 100%;
   }
 
   body {
     @apply bg-gray-50 text-gray-900 font-sans;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  #root {
+    height: 100%;
+    min-height: 100vh;
+  }
+
+  /* Full height for main app wrapper */
+  .app-wrapper {
+    height: 100vh;
+    overflow: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -34,11 +49,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-primary-300 rounded-full hover:bg-primary-400;
+    @apply bg-primary-300 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary-500;
+    @apply bg-primary-400;
   }
 }
 

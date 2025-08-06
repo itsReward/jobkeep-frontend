@@ -72,6 +72,7 @@ export default {
           900: '#7f1d1d',
           950: '#450a0a',
         },
+        border: '#e5e7eb', // gray-200 equivalent
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
