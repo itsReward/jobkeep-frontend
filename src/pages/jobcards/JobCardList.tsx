@@ -1,11 +1,29 @@
-freezeJobCard,
-    useCloseJobCard,
-    useSetJobCardPriority
-} from '@/hooks/useJobCards'
-import { JobCardFilters } from '@/services/api/jobcards'
+import React, { useState, useMemo } from 'react'
+import { useFreezeJobCard, useCloseJobCard, useSetJobCardPriority, useDeleteJobCard, useJobCards, useUpdateJobCardStatus, useUnfreezeJobCard} from '@/hooks/useJobCards'
+import { JobCardFilters } from '@/services/api/jobCards'
 import { JOB_CARD_STATUSES } from '@/utils/constants'
 import { formatDate } from '@/utils/date'
 import { JobCard } from '@/types'
+import {
+    AlertTriangle,
+    Calendar,
+    Car,
+    CheckCircle,
+    Clock,
+    Edit,
+    Filter,
+    Play,
+    Plus,
+    Search,
+    Snowflake,
+    Target,
+    Trash2,
+    User,
+    X
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, Button, Badge, Input, Loading } from '@/components/ui'
+
+
 
 const JobCardList: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('')

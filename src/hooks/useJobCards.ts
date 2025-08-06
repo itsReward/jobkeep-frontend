@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { jobCardService, CreateJobCardRequest, UpdateJobCardRequest, JobCardFilters } from '@/services/api/jobcards'
-import { JobCard } from '@/types'
+import { jobCardService, CreateJobCardRequest, UpdateJobCardRequest, JobCardFilters } from '@/services/api/jobCards'
 import toast from 'react-hot-toast'
 
 // Query keys
