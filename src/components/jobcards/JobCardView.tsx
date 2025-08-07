@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/ui/Loading'
 import { TimesheetModal } from '@/components/timesheets/TimesheetModal'
+import { CommentsPanel } from '@/components/comments/CommentsPanel'
 import {
     useJobCard,
     useUpdateJobCardStatus,
@@ -57,7 +58,9 @@ interface JobCardViewProps {
 export const JobCardView: React.FC<JobCardViewProps> = ({
                                                             jobCardId,
                                                             onBack,
-                                                            onEdit
+                                                            onEdit,
+                                                            currentUserId,
+                                                            currentUserRole
                                                         }) => {
     const { data: jobCard, isLoading, error } = useJobCard(jobCardId)
     const { data: timesheets, isLoading: timesheetsLoading } = useTimesheetsByJobCard(jobCardId)
@@ -202,418 +205,425 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
     const availableStatuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED']
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" onClick={onBack} className="p-2">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
-                            {jobCard.jobCardName}
-                        </h1>
-                        <p className="text-gray-600">Job Card #{jobCard.jobCardNumber}</p>
+        <div className="flex h-full">
+            {/* Main Content Area */}
+            <div className="flex-1 p-6 max-w-7xl mx-auto space-y-6 overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" onClick={onBack} className="p-2">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                {jobCard.jobCardName}
+                            </h1>
+                            <p className="text-gray-600">Job Card #{jobCard.jobCardNumber}</p>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                    {onEdit && (
-                        <Button variant="outline" onClick={() => onEdit(jobCard)}>
-                            <Edit className="h-4 w-4" />
-                            Edit
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {onEdit && (
+                            <Button variant="outline" onClick={() => onEdit(jobCard)}>
+                                <Edit className="h-4 w-4" />
+                                Edit
+                            </Button>
+                        )}
 
-                    {/* Priority Toggle */}
-                    <Button
-                        variant={jobCard.priority ? "primary" : "outline"}
-                        onClick={handlePriorityToggle}
-                        disabled={setPriority.isPending}
-                    >
-                        <Flag className="h-4 w-4" />
-                        {jobCard.priority ? 'Priority' : 'Set Priority'}
-                    </Button>
-
-                    {/* Status Actions */}
-                    <div className="relative">
+                        {/* Priority Toggle */}
                         <Button
-                            variant="outline"
-                            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                            disabled={jobCard.dateAndTimeClosed}
+                            variant={jobCard.priority ? "primary" : "outline"}
+                            onClick={handlePriorityToggle}
+                            disabled={setPriority.isPending}
                         >
-                            <currentStatus.icon className="h-4 w-4" />
-                            Change Status
+                            <Flag className="h-4 w-4" />
+                            {jobCard.priority ? 'Priority' : 'Set Priority'}
                         </Button>
 
-                        {showStatusDropdown && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                                {availableStatuses.map((status) => {
-                                    const statusInfo = getStatusInfo(status)
-                                    return (
-                                        <button
-                                            key={status}
-                                            onClick={() => handleStatusChange(status)}
-                                            className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
-                                        >
-                                            <statusInfo.icon className="h-4 w-4" />
-                                            {statusInfo.label}
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                        {/* Status Actions */}
+                        <div className="relative">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                                disabled={jobCard.dateAndTimeClosed}
+                            >
+                                <currentStatus.icon className="h-4 w-4" />
+                                Change Status
+                            </Button>
+
+                            {showStatusDropdown && (
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                    {availableStatuses.map((status) => {
+                                        const statusInfo = getStatusInfo(status)
+                                        return (
+                                            <button
+                                                key={status}
+                                                onClick={() => handleStatusChange(status)}
+                                                className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                                            >
+                                                <statusInfo.icon className="h-4 w-4" />
+                                                {statusInfo.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Freeze/Unfreeze */}
+                        {!jobCard.dateAndTimeClosed && (
+                            <Button
+                                variant={jobCard.dateAndTimeFrozen ? "warning" : "outline"}
+                                onClick={handleFreeze}
+                                disabled={freezeJobCard.isPending || unfreezeJobCard.isPending}
+                            >
+                                {jobCard.dateAndTimeFrozen ? (
+                                    <>
+                                        <Play className="h-4 w-4" />
+                                        Unfreeze
+                                    </>
+                                ) : (
+                                    <>
+                                        <PauseCircle className="h-4 w-4" />
+                                        Freeze
+                                    </>
+                                )}
+                            </Button>
+                        )}
+
+                        {/* Close */}
+                        {!jobCard.dateAndTimeClosed && (
+                            <Button
+                                variant="outline"
+                                onClick={handleClose}
+                                disabled={closeJobCard.isPending}
+                                className="text-error-600 border-error-300 hover:bg-error-50"
+                            >
+                                <XCircle className="h-4 w-4" />
+                                Close Job Card
+                            </Button>
                         )}
                     </div>
-
-                    {/* Freeze/Unfreeze */}
-                    {!jobCard.dateAndTimeClosed && (
-                        <Button
-                            variant={jobCard.dateAndTimeFrozen ? "warning" : "outline"}
-                            onClick={handleFreeze}
-                            disabled={freezeJobCard.isPending || unfreezeJobCard.isPending}
-                        >
-                            {jobCard.dateAndTimeFrozen ? (
-                                <>
-                                    <Play className="h-4 w-4" />
-                                    Unfreeze
-                                </>
-                            ) : (
-                                <>
-                                    <PauseCircle className="h-4 w-4" />
-                                    Freeze
-                                </>
-                            )}
-                        </Button>
-                    )}
-
-                    {/* Close */}
-                    {!jobCard.dateAndTimeClosed && (
-                        <Button
-                            variant="outline"
-                            onClick={handleClose}
-                            disabled={closeJobCard.isPending}
-                            className="text-error-600 border-error-300 hover:bg-error-50"
-                        >
-                            <XCircle className="h-4 w-4" />
-                            Close Job Card
-                        </Button>
-                    )}
                 </div>
-            </div>
 
-            {/* Status and Priority Bar */}
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <Badge className={`${currentStatus.bgColor} ${currentStatus.textColor}`}>
-                                    <currentStatus.icon className="h-4 w-4" />
-                                    {currentStatus.label}
-                                </Badge>
-                                {jobCard.priority && (
-                                    <Badge className="bg-warning-100 text-warning-800">
-                                        <Flag className="h-4 w-4" />
-                                        Priority
-                                    </Badge>
-                                )}
-                                {isOverdue && (
-                                    <Badge className="bg-error-100 text-error-800">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        Overdue
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="text-right">
-                            <p className="text-sm text-gray-600">Time Elapsed</p>
-                            <p className="text-lg font-semibold">{hoursElapsed}h</p>
-                            <p className="text-sm text-gray-600">
-                                {daysUntilDeadline >= 0 ? `${daysUntilDeadline} days until deadline` : `${Math.abs(daysUntilDeadline)} days overdue`}
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Job Details */}
+                {/* Status and Priority Bar */}
                 <Card>
-                    <CardHeader>
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Job Details
-                        </h2>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Date & Time In</label>
-                                <p className="text-gray-900">{formatSafeDate(dateIn)}</p>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <Badge className={`${currentStatus.bgColor} ${currentStatus.textColor}`}>
+                                        <currentStatus.icon className="h-4 w-4" />
+                                        {currentStatus.label}
+                                    </Badge>
+                                    {jobCard.priority && (
+                                        <Badge className="bg-warning-100 text-warning-800">
+                                            <Flag className="h-4 w-4" />
+                                            Priority
+                                        </Badge>
+                                    )}
+                                    {isOverdue && (
+                                        <Badge className="bg-error-100 text-error-800">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            Overdue
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Estimated Completion</label>
-                                <p className="text-gray-900">{formatSafeDate(estimatedCompletion)}</p>
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Deadline</label>
-                                <p className={`${isOverdue ? 'text-error-600 font-semibold' : 'text-gray-900'}`}>
-                                    {formatSafeDate(deadline)}
+                            <div className="text-right">
+                                <p className="text-sm text-gray-600">Time Elapsed</p>
+                                <p className="text-lg font-semibold">{hoursElapsed}h</p>
+                                <p className="text-sm text-gray-600">
+                                    {daysUntilDeadline >= 0 ? `${daysUntilDeadline} days until deadline` : `${Math.abs(daysUntilDeadline)} days overdue`}
                                 </p>
                             </div>
-
-                            {jobCard.dateAndTimeFrozen && (
-                                <div>
-                                    <label className="text-sm font-medium text-gray-600">Frozen Date</label>
-                                    <p className="text-error-600">{formatSafeDate(safeParseDate(jobCard.dateAndTimeFrozen))}</p>
-                                </div>
-                            )}
-
-                            {jobCard.dateAndTimeClosed && (
-                                <div>
-                                    <label className="text-sm font-medium text-gray-600">Closed Date</label>
-                                    <p className="text-gray-600">{formatSafeDate(safeParseDate(jobCard.dateAndTimeClosed))}</p>
-                                </div>
-                            )}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Vehicle Information */}
-                <Card>
-                    <CardHeader>
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <Car className="h-5 w-5" />
-                            Vehicle Information
-                        </h2>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Vehicle</label>
-                                <p className="text-lg font-semibold text-gray-900">{jobCard.vehicleName}</p>
-                            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Job Details */}
+                    <Card>
+                        <CardHeader>
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                <FileText className="h-5 w-5" />
+                                Job Details
+                            </h2>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Date & Time In</label>
+                                    <p className="text-gray-900">{formatSafeDate(dateIn)}</p>
+                                </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Owner</label>
-                                <p className="text-gray-900">{jobCard.clientName}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Estimated Completion</label>
+                                    <p className="text-gray-900">{formatSafeDate(estimatedCompletion)}</p>
+                                </div>
 
-                {/* Staff Assignment */}
-                <Card>
-                    <CardHeader>
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <User className="h-5 w-5" />
-                            Staff Assignment
-                        </h2>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                        {/* Service Advisor and Supervisor */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Service Advisor</label>
-                                <p className="text-gray-900 font-medium">{jobCard.serviceAdvisorName}</p>
-                            </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Deadline</label>
+                                    <p className={`${isOverdue ? 'text-error-600 font-semibold' : 'text-gray-900'}`}>
+                                        {formatSafeDate(deadline)}
+                                    </p>
+                                </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-600">Supervisor</label>
-                                <p className="text-gray-900 font-medium">{jobCard.supervisorName}</p>
-                            </div>
-                        </div>
+                                {jobCard.dateAndTimeFrozen && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600">Frozen Date</label>
+                                        <p className="text-error-600">{formatSafeDate(safeParseDate(jobCard.dateAndTimeFrozen))}</p>
+                                    </div>
+                                )}
 
-                        {/* Technicians Section */}
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <label className="text-sm font-medium text-gray-600">Technicians</label>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {/* Handle add technician */}}
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Add Technician
-                                    </Button>
+                                {jobCard.dateAndTimeClosed && (
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600">Closed Date</label>
+                                        <p className="text-gray-600">{formatSafeDate(safeParseDate(jobCard.dateAndTimeClosed))}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Vehicle Information */}
+                    <Card>
+                        <CardHeader>
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                <Car className="h-5 w-5" />
+                                Vehicle Information
+                            </h2>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Vehicle</label>
+                                    <p className="text-lg font-semibold text-gray-900">{jobCard.vehicleName}</p>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Owner</label>
+                                    <p className="text-gray-900">{jobCard.clientName}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Staff Assignment */}
+                    <Card>
+                        <CardHeader>
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                <User className="h-5 w-5" />
+                                Staff Assignment
+                            </h2>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            {/* Service Advisor and Supervisor */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Service Advisor</label>
+                                    <p className="text-gray-900 font-medium">{jobCard.serviceAdvisorName}</p>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium text-gray-600">Supervisor</label>
+                                    <p className="text-gray-900 font-medium">{jobCard.supervisorName}</p>
                                 </div>
                             </div>
 
-                            {techniciansLoading ? (
-                                <div className="flex items-center justify-center py-4">
-                                    <Loading size="sm" text="Loading technicians..." />
-                                </div>
-                            ) : technicians && technicians.length > 0 ? (
-                                <div className="space-y-2">
-                                    {technicians.map((technician) => (
-                                        <div
-                                            key={technician.employeeId}
-                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            {/* Technicians Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-medium text-gray-600">Technicians</label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {/* Handle add technician */}}
                                         >
+                                            <Plus className="h-4 w-4" />
+                                            Add Technician
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {techniciansLoading ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loading size="sm" text="Loading technicians..." />
+                                    </div>
+                                ) : technicians && technicians.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {technicians.map((technician) => (
+                                            <div
+                                                key={technician.employeeId}
+                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                            >
                       <span className="font-medium">
                         {technician.employeeName} {technician.employeeSurname}
                       </span>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleRemoveTechnician(technician.employeeId)}
-                                                className="text-error-600 hover:text-error-700"
-                                                disabled={removeTechnician.isPending}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 text-gray-500">
-                                    <User className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                    <p>No technicians assigned</p>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleRemoveTechnician(technician.employeeId)}
+                                                    className="text-error-600 hover:text-error-700"
+                                                    disabled={removeTechnician.isPending}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-gray-500">
+                                        <User className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                        <p>No technicians assigned</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                {/* Checklists */}
+                    {/* Checklists */}
+                    <Card>
+                        <CardHeader>
+                            <h2 className="text-xl font-semibold flex items-center gap-2">
+                                <Settings className="h-5 w-5" />
+                                Checklists
+                            </h2>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 gap-3">
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="font-medium">State Checklist</span>
+                                    <Badge variant={jobCard.stateChecklistId ? "success" : "secondary"}>
+                                        {jobCard.stateChecklistId ? "Completed" : "Pending"}
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="font-medium">Service Checklist</span>
+                                    <Badge variant={jobCard.serviceChecklistId ? "success" : "secondary"}>
+                                        {jobCard.serviceChecklistId ? "Completed" : "Pending"}
+                                    </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="font-medium">Control Checklist</span>
+                                    <Badge variant={jobCard.controlChecklistId ? "success" : "secondary"}>
+                                        {jobCard.controlChecklistId ? "Completed" : "Pending"}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Timesheets */}
                 <Card>
                     <CardHeader>
                         <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <Settings className="h-5 w-5" />
-                            Checklists
+                            <Timer className="h-5 w-5" />
+                            Timesheets
                         </h2>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span className="font-medium">State Checklist</span>
-                                <Badge variant={jobCard.stateChecklistId ? "success" : "secondary"}>
-                                    {jobCard.stateChecklistId ? "Completed" : "Pending"}
-                                </Badge>
+                    <CardContent className="p-6">
+                        {timesheetsLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loading size="md" text="Loading timesheets..." />
                             </div>
+                        ) : sortedTimesheets && sortedTimesheets.length > 0 ? (
+                            <div className="space-y-4">
+                                {sortedTimesheets.map((timesheet) => {
+                                    const clockInDate = safeParseDate(timesheet.clockInDateAndTime)
+                                    const clockOutDate = safeParseDate(timesheet.clockOutDateAndTime)
 
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span className="font-medium">Service Checklist</span>
-                                <Badge variant={jobCard.serviceChecklistId ? "success" : "secondary"}>
-                                    {jobCard.serviceChecklistId ? "Completed" : "Pending"}
-                                </Badge>
-                            </div>
+                                    return (
+                                        <div key={timesheet.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="font-semibold text-gray-900">{timesheet.sheetTitle}</h3>
+                                                        <Badge variant="secondary" className="text-xs">
+                                                            {timesheet.hoursWorked || 0}h
+                                                        </Badge>
+                                                    </div>
 
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span className="font-medium">Control Checklist</span>
-                                <Badge variant={jobCard.controlChecklistId ? "success" : "secondary"}>
-                                    {jobCard.controlChecklistId ? "Completed" : "Pending"}
-                                </Badge>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Timesheets */}
-            <Card>
-                <CardHeader>
-                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                        <Timer className="h-5 w-5" />
-                        Timesheets
-                    </h2>
-                </CardHeader>
-                <CardContent className="p-6">
-                    {timesheetsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loading size="md" text="Loading timesheets..." />
-                        </div>
-                    ) : sortedTimesheets && sortedTimesheets.length > 0 ? (
-                        <div className="space-y-4">
-                            {sortedTimesheets.map((timesheet) => {
-                                const clockInDate = safeParseDate(timesheet.clockInDateAndTime)
-                                const clockOutDate = safeParseDate(timesheet.clockOutDateAndTime)
-
-                                return (
-                                    <div key={timesheet.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <h3 className="font-semibold text-gray-900">{timesheet.sheetTitle}</h3>
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        {timesheet.hoursWorked || 0}h
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <Clock className="h-4 w-4" />
-                                                        <span>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                            <Clock className="h-4 w-4" />
+                                                            <span>
                               {formatSafeDate(clockInDate, 'MMM d, h:mm a')} - {formatSafeDate(clockOutDate, 'h:mm a')}
                             </span>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                            <User className="h-4 w-4" />
+                                                            <span>{timesheet.technicianName}</span>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                        <User className="h-4 w-4" />
-                                                        <span>{timesheet.technicianName}</span>
-                                                    </div>
+                                                    {timesheet.report && (
+                                                        <div className="mb-3">
+                                                            <p className="text-sm text-gray-600 mb-1">Work Report:</p>
+                                                            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                                                                {truncateText(timesheet.report, 200)}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {timesheet.report && (
-                                                    <div className="mb-3">
-                                                        <p className="text-sm text-gray-600 mb-1">Work Report:</p>
-                                                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                                                            {truncateText(timesheet.report, 200)}
-                                                        </p>
-                                                    </div>
-                                                )}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleViewTimesheet(timesheet)}
+                                                    className="ml-3"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    View
+                                                </Button>
                                             </div>
-
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleViewTimesheet(timesheet)}
-                                                className="ml-3"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                                View
-                                            </Button>
                                         </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })}
 
-                            <div className="mt-6 p-4 bg-primary-50 rounded-lg">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-primary-900">Total Hours Logged</span>
-                                    <span className="text-xl font-bold text-primary-900">
+                                <div className="mt-6 p-4 bg-primary-50 rounded-lg">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-primary-900">Total Hours Logged</span>
+                                        <span className="text-xl font-bold text-primary-900">
                     {sortedTimesheets.reduce((total, ts) => total + (ts.hoursWorked || 0), 0)}h
                   </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8">
-                            <Timer className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-gray-600">No timesheets recorded yet</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                        ) : (
+                            <div className="text-center py-8">
+                                <Timer className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                <p className="text-gray-600">No timesheets recorded yet</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
-            {/* Timesheet Detail Modal */}
-            {selectedTimesheet && (
-                <TimesheetModal
-                    timesheet={selectedTimesheet}
-                    isOpen={showTimesheetModal}
-                    onClose={() => {
-                        setShowTimesheetModal(false)
-                        setSelectedTimesheet(null)
-                    }}
-                />
-            )}
+                {/* Timesheet Detail Modal */}
+                {selectedTimesheet && (
+                    <TimesheetModal
+                        timesheet={selectedTimesheet}
+                        isOpen={showTimesheetModal}
+                        onClose={() => {
+                            setShowTimesheetModal(false)
+                            setSelectedTimesheet(null)
+                        }}
+                    />
+                )}
+            </div>
+
+            {/* Comments Panel */}
+            <CommentsPanel
+                jobCardId={jobCardId}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+            />
         </div>
     )
 }
-
-
-export default JobCardView;

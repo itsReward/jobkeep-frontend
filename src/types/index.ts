@@ -70,6 +70,16 @@ export interface JobCardTechnician {
   employeeSurname: string
 }
 
+export interface Comment {
+  commentId: string
+  jobCardId: string
+  jobCardName: string
+  employeeId: string
+  employeeName: string
+  comment: string
+  commentDate: string
+}
+
 export interface Timesheet {
   id: string
   sheetTitle: string
