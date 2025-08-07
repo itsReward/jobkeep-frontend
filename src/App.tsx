@@ -7,7 +7,6 @@ import Dashboard from './pages/dashboard/Dashboard'
 import JobCardList from './pages/jobcards/JobCardList'
 import { Layout } from './components/layout/Layout'
 import { authService } from './services/api/auth'
-import './App.css'
 
 // Create a client
 const queryClient = new QueryClient({

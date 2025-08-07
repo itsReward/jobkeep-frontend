@@ -196,7 +196,7 @@ src/
 
 3. **Access the application:**
    - Frontend: http://localhost:3000
-   - Backend API expected: http://localhost:8080
+   - Backend API expected: http://localhost:5000
 
 ### Manual Setup (Alternative)
 
