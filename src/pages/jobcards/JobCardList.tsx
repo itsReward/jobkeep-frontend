@@ -19,13 +19,12 @@ import {
     Target,
     Trash2,
     User,
-    X
+    X,
+    Eye
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, Button, Badge, Input, Loading } from '@/components/ui'
-
-
-
-
+import { JobCardView } from '@/components/jobcards/JobCardView'
+import { JobCardForm } from '@/components/forms/JobCardForm'
 
 const JobCardList: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('')
@@ -35,6 +34,9 @@ const JobCardList: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showJobCardForm, setShowJobCardForm] = useState(false)
     const [editingJobCard, setEditingJobCard] = useState<JobCard | null>(null)
+
+    // New state for view functionality
+    const [viewingJobCardId, setViewingJobCardId] = useState<string | null>(null)
 
     // Fetch job cards
     const { data: jobCards, isLoading, error, refetch } = useJobCards(filters)
@@ -96,6 +98,11 @@ const JobCardList: React.FC = () => {
         setPriority.mutate({ id: jobCard.id, priority: !jobCard.priority })
     }
 
+    // Handle view job card
+    const handleView = (jobCard: JobCard) => {
+        setViewingJobCardId(jobCard.id)
+    }
+
     // Handle edit
     const handleEdit = (jobCard: JobCard) => {
         setEditingJobCard(jobCard)
@@ -126,6 +133,40 @@ const JobCardList: React.FC = () => {
             setShowDeleteModal(false)
             setSelectedJobCard(null)
         }
+    }
+
+    // Handle back from view
+    const handleBackFromView = () => {
+        setViewingJobCardId(null)
+    }
+
+    // Handle edit from view
+    const handleEditFromView = (jobCard: JobCard) => {
+        setViewingJobCardId(null)
+        setEditingJobCard(jobCard)
+        setShowJobCardForm(true)
+    }
+
+    // If viewing a specific job card, show the JobCardView component
+    if (viewingJobCardId) {
+        return (
+            <JobCardView
+                jobCardId={viewingJobCardId}
+                onBack={handleBackFromView}
+                onEdit={handleEditFromView}
+            />
+        )
+    }
+
+    // If showing form, render the form
+    if (showJobCardForm) {
+        return (
+            <JobCardForm
+                jobCard={editingJobCard || undefined}
+                onClose={handleFormClose}
+                onSuccess={handleFormClose}
+            />
+        )
     }
 
     if (isLoading) {
@@ -194,16 +235,19 @@ const JobCardList: React.FC = () => {
                         </Button>
                     </div>
 
-                    {/* Filter Panel */}
+                    {/* Expanded Filters */}
                     {showFilters && (
-                        <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
-                                    <label className="label">Status</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                                     <select
-                                        className="input"
+                                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         value={filters.status || ''}
-                                        onChange={(e) => setFilters({ ...filters, status: e.target.value || undefined })}
+                                        onChange={(e) => setFilters({
+                                            ...filters,
+                                            status: e.target.value || undefined
+                                        })}
                                     >
                                         <option value="">All Statuses</option>
                                         <option value="OPEN">Open</option>
@@ -214,13 +258,13 @@ const JobCardList: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="label">Priority</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                                     <select
-                                        className="input"
-                                        value={filters.priority?.toString() || ''}
+                                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        value={filters.priority === undefined ? '' : filters.priority.toString()}
                                         onChange={(e) => setFilters({
                                             ...filters,
-                                            priority: e.target.value ? e.target.value === 'true' : undefined
+                                            priority: e.target.value === '' ? undefined : e.target.value === 'true'
                                         })}
                                     >
                                         <option value="">All</option>
@@ -246,50 +290,53 @@ const JobCardList: React.FC = () => {
             {/* Job Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredJobCards.map((jobCard) => {
-                    const statusInfo = getStatusInfo(jobCard.dateAndTimeFrozen ? 'FROZEN' : 'IN_PROGRESS')
+                    const statusInfo = getStatusInfo(jobCard.dateAndTimeFrozen ?
+                        'FROZEN' : jobCard.dateAndTimeClosed ?
+                            'CLOSED' : 'OPEN')
                     const StatusIcon = statusInfo.icon
-                    const isOverdue = new Date(jobCard.jobCardDeadline) < new Date()
+                    const isOverdue = new Date(jobCard.jobCardDeadline) < new Date() && !jobCard.dateAndTimeClosed
 
                     return (
                         <Card key={jobCard.id} className="hover:shadow-lg transition-shadow">
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-gray-900">{jobCard.jobCardName}</h3>
-                                            {jobCard.priority && (
-                                                <AlertTriangle className="h-4 w-4 text-warning-500" />
-                                            )}
-                                        </div>
+                            <CardContent className="p-6">
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                            {jobCard.jobCardName}
+                                        </h3>
                                         <p className="text-sm text-gray-600">#{jobCard.jobCardNumber}</p>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <Badge variant={statusInfo.color as any}>
-                                            <StatusIcon className="h-3 w-3 mr-1" />
+                                    <div className="flex items-center gap-2 ml-2">
+                                        {jobCard.priority && (
+                                            <Badge variant="warning">
+                                                Priority
+                                            </Badge>
+                                        )}
+                                        <Badge variant={statusInfo.color}>
+                                            <StatusIcon className="h-3 w-3" />
                                             {statusInfo.label}
                                         </Badge>
                                     </div>
                                 </div>
-                            </CardHeader>
 
-                            <CardContent className="space-y-4">
-                                {/* Client and Vehicle */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <User className="h-4 w-4" />
-                                        <span>{jobCard.clientName}</span>
-                                    </div>
+                                {/* Vehicle and Client */}
+                                <div className="space-y-2 mb-4">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <Car className="h-4 w-4" />
                                         <span>{jobCard.vehicleName}</span>
                                     </div>
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                        <User className="h-4 w-4" />
+                                        <span>{jobCard.clientName}</span>
+                                    </div>
                                 </div>
 
                                 {/* Dates */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 mb-4">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <Calendar className="h-4 w-4" />
-                                        <span>Started: {formatDate(jobCard.dateAndTimeIn)}</span>
+                                        <span>Created: {formatDate(jobCard.dateAndTimeIn)}</span>
                                     </div>
                                     <div className={`flex items-center gap-2 text-sm ${
                                         isOverdue ? 'text-error-600' : 'text-gray-600'
@@ -301,7 +348,7 @@ const JobCardList: React.FC = () => {
                                 </div>
 
                                 {/* Service Advisor */}
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                                     <User className="h-4 w-4" />
                                     <span>Advisor: {jobCard.serviceAdvisorName}</span>
                                 </div>
@@ -321,13 +368,20 @@ const JobCardList: React.FC = () => {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleFreeze(jobCard)}
-                                            className={jobCard.dateAndTimeFrozen ? 'text-error-600' : 'text-gray-400'}
+                                            className={jobCard.dateAndTimeFrozen ? 'text-primary-600' : 'text-gray-400'}
                                         >
                                             <Snowflake className="h-4 w-4" />
                                         </Button>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleView(jobCard)}
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -355,9 +409,11 @@ const JobCardList: React.FC = () => {
             {filteredJobCards.length === 0 && (
                 <Card>
                     <CardContent className="p-12 text-center">
-                        <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Job Cards Found</h3>
-                        <p className="text-gray-600 mb-4">
+                        <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {searchTerm || Object.keys(filters).length > 0 ? 'No job cards found' : 'No job cards yet'}
+                        </h3>
+                        <p className="text-gray-600 mb-6">
                             {searchTerm || Object.keys(filters).length > 0
                                 ? 'No job cards match your current search or filters.'
                                 : 'Get started by creating your first job card.'

@@ -64,15 +64,25 @@ export interface JobCard {
   controlChecklistId?: string
 }
 
+export interface JobCardTechnician {
+  employeeId: string
+  employeeName: string
+  employeeSurname: string
+}
+
 export interface Timesheet {
   id: string
-  employeeId: string
+  sheetTitle: string
+  report: string
+  clockInDateAndTime: string
+  clockOutDateAndTime: string
   jobCardId: string
-  startTime: string
-  endTime: string
-  description: string
-  hoursWorked: number
+  jobCardName: string
+  technicianId: string
+  technicianName: string
+  hoursWorked?: number // Calculated field
 }
+
 
 export interface Appointment {
   id: string
