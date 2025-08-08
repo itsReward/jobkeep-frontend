@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, Button, Badge, Loading } from '@/compone
 import { Vehicle } from '@/services/api/vehicles'
 import { useVehicle } from '@/hooks/useVehicles'
 import { useClient } from '@/hooks/useClients'
+import { useJobCardsByVehicle } from '@/hooks/useJobCards'
 import {
     X,
     Edit,
@@ -14,24 +15,45 @@ import {
     Settings,
     Calendar,
     FileText,
-    ExternalLink
+    ExternalLink,
+    ChevronRight
 } from 'lucide-react'
+import { formatDate } from '@/utils/date'
 
 interface VehicleViewProps {
     vehicleId: string
     onClose: () => void
     onEdit: (vehicle: Vehicle) => void
     onViewClient?: (clientId: string) => void
+    onViewJobCard?: (jobCardId: string) => void
 }
 
 export const VehicleView: React.FC<VehicleViewProps> = ({
                                                             vehicleId,
                                                             onClose,
                                                             onEdit,
-                                                            onViewClient
+                                                            onViewClient,
+                                                            onViewJobCard
                                                         }) => {
     const { data: vehicle, isLoading: vehicleLoading, error: vehicleError } = useVehicle(vehicleId)
     const { data: client, isLoading: clientLoading } = useClient(vehicle?.clientId || '')
+    const { data: jobCards, isLoading: jobCardsLoading } = useJobCardsByVehicle(vehicleId)
+
+    // Filter completed job cards and sort by dateAndTimeClosed
+    const completedJobCards = React.useMemo(() => {
+        if (!jobCards) return []
+
+        return jobCards
+            .filter(jobCard => jobCard.dateAndTimeClosed) // Only completed job cards
+            .sort((a, b) => {
+                // Sort by dateAndTimeClosed, most recent first
+                const dateA = new Date(a.dateAndTimeClosed!).getTime()
+                const dateB = new Date(b.dateAndTimeClosed!).getTime()
+                return dateB - dateA
+            })
+    }, [jobCards])
+
+    const totalServices = completedJobCards.length
 
     if (vehicleLoading) {
         return (
@@ -56,6 +78,15 @@ export const VehicleView: React.FC<VehicleViewProps> = ({
                 </Card>
             </div>
         )
+    }
+
+    const handleJobCardClick = (jobCardId: string) => {
+        if (onViewJobCard) {
+            onViewJobCard(jobCardId)
+        } else {
+            // TODO: Default navigation to job card view
+            window.location.pathname = `/job-cards/${jobCardId}`
+        }
     }
 
     return (
@@ -223,26 +254,82 @@ export const VehicleView: React.FC<VehicleViewProps> = ({
                             </Card>
                         </div>
 
-                        {/* Service History Section (Placeholder) */}
+                        {/* Service History Section */}
                         <Card className="border border-gray-200">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
                                         <FileText className="h-5 w-5 text-gray-600" />
                                         <h3 className="text-lg font-medium text-gray-900">Service History</h3>
-                                        <Badge variant="secondary">0</Badge>
+                                        <Badge variant="secondary">{totalServices}</Badge>
                                     </div>
-                                    <Button size="sm" variant="outline">
-                                        View All Services
-                                    </Button>
+                                    {totalServices > 0 && (
+                                        <Button size="sm" variant="outline">
+                                            View All Services
+                                        </Button>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-center py-8">
-                                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                                    <p className="text-gray-500">No service history found</p>
-                                    <p className="text-sm text-gray-400 mt-1">Service records will appear here once work is completed</p>
-                                </div>
+                                {jobCardsLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Loading size="sm" />
+                                        <span className="ml-2 text-sm text-gray-500">Loading service history...</span>
+                                    </div>
+                                ) : completedJobCards.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500">No completed services found</p>
+                                        <p className="text-sm text-gray-400 mt-1">Completed service records will appear here</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {completedJobCards.slice(0, 5).map((jobCard) => (
+                                            <div
+                                                key={jobCard.id}
+                                                onClick={() => handleJobCardClick(jobCard.id)}
+                                                className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                            <FileText className="h-4 w-4 text-green-600" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="text-sm font-medium text-gray-900">
+                                                                {jobCard.jobCardName}
+                                                            </h4>
+                                                            <div className="flex items-center space-x-4 mt-1">
+                                                                <p className="text-xs text-gray-500">
+                                                                    Completed: {formatDate(jobCard.dateAndTimeClosed!)}
+                                                                </p>
+                                                                {jobCard.serviceAdvisorName && (
+                                                                    <p className="text-xs text-gray-500">
+                                                                        Advisor: {jobCard.serviceAdvisorName}
+                                                                    </p>
+                                                                )}
+                                                                {jobCard.priority && (
+                                                                    <Badge variant="secondary" className="text-xs">
+                                                                        Priority
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                                            </div>
+                                        ))}
+
+                                        {completedJobCards.length > 5 && (
+                                            <div className="text-center pt-3 border-t border-gray-100">
+                                                <Button variant="ghost" size="sm" className="text-blue-600">
+                                                    View {completedJobCards.length - 5} more services
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -251,16 +338,20 @@ export const VehicleView: React.FC<VehicleViewProps> = ({
                             <CardContent className="p-4">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                                     <div>
-                                        <p className="text-2xl font-bold text-blue-600">0</p>
+                                        <p className="text-2xl font-bold text-blue-600">{totalServices}</p>
                                         <p className="text-sm text-gray-600">Total Services</p>
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-bold text-blue-600">0</p>
+                                        <p className="text-2xl font-bold text-blue-600">
+                                            {jobCards?.filter(jc => !jc.dateAndTimeClosed).length || 0}
+                                        </p>
                                         <p className="text-sm text-gray-600">Active Jobs</p>
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-bold text-blue-600">0</p>
-                                        <p className="text-sm text-gray-600">Pending Jobs</p>
+                                        <p className="text-2xl font-bold text-blue-600">
+                                            {jobCards?.filter(jc => jc.priority && !jc.dateAndTimeClosed).length || 0}
+                                        </p>
+                                        <p className="text-sm text-gray-600">Priority Jobs</p>
                                     </div>
                                     <div>
                                         <p className="text-2xl font-bold text-blue-600">$0</p>
