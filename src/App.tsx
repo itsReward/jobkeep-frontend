@@ -7,6 +7,8 @@ import Dashboard from './pages/dashboard/Dashboard'
 import JobCardList from './pages/jobcards/JobCardList'
 import { Layout } from './components/layout/Layout'
 import { authService } from './services/api/auth'
+import ClientList from "@/pages/clients/ClientList"
+import VehicleList from '@/pages/vehicles/VehicleList'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -96,10 +98,7 @@ function App() {
                             path="/clients"
                             element={
                                 <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Clients</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
+                                    <ClientList/>
                                 </ProtectedRoute>
                             }
                         />
@@ -108,10 +107,7 @@ function App() {
                             path="/vehicles"
                             element={
                                 <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Vehicles</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
+                                    <VehicleList/>
                                 </ProtectedRoute>
                             }
                         />
