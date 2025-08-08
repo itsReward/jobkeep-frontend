@@ -29,15 +29,16 @@ export interface Vehicle {
 }
 
 export interface Employee {
-  id: string
+  employeeId: string
   employeeName: string
   employeeSurname: string
-  rating: number
-  employeeRole: string
-  employeeDepartment: string
+  email: string
   phoneNumber: string
-  homeAddress: string
-  jobCards: JobCard[]
+  employeeRole: string
+  rating?: number
+  employeeDepartment?: string
+  homeAddress?: string
+  jobCards?: JobCard[]
 }
 
 export interface JobCard {

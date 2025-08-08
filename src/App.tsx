@@ -9,6 +9,10 @@ import { Layout } from './components/layout/Layout'
 import { authService } from './services/api/auth'
 import ClientList from "@/pages/clients/ClientList"
 import VehicleList from '@/pages/vehicles/VehicleList'
+import {
+    EmployeeList,
+} from '@/pages/employees/EmployeeList'
+import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -116,10 +120,7 @@ function App() {
                             path="/employees"
                             element={
                                 <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Employees</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
+                                    <EmployeeList/>
                                 </ProtectedRoute>
                             }
                         />
@@ -129,8 +130,7 @@ function App() {
                             element={
                                 <ProtectedRoute>
                                     <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Appointments</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
+                                        <AppointmentList/>
                                     </div>
                                 </ProtectedRoute>
                             }

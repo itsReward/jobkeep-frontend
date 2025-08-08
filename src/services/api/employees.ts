@@ -1,4 +1,3 @@
-// src/services/api/employees.ts
 import { ApiService } from './base'
 import { Employee } from '@/types'
 
@@ -6,9 +5,14 @@ export interface CreateEmployeeRequest {
     employeeName: string
     employeeSurname: string
     email: string
-    phone: string
-    position: string
+    phoneNumber: string
+    employeeRole: string
+    rating?: number
+    employeeDepartment?: string
+    homeAddress?: string
 }
+
+export interface UpdateEmployeeRequest extends Partial<CreateEmployeeRequest> {}
 
 export class EmployeeService extends ApiService {
     constructor() {
@@ -27,12 +31,12 @@ export class EmployeeService extends ApiService {
         return this.post<Employee>('/new', employee)
     }
 
-    async update(id: string, employee: Partial<CreateEmployeeRequest>): Promise<Employee> {
+    async update(id: string, employee: UpdateEmployeeRequest): Promise<Employee> {
         return this.put<Employee>(`/update/${id}`, employee)
     }
 
-    async delete(id: string): Promise<string> {
-        return super.delete<string>(`/delete/${id}`)
+    async delete(id: string): Promise<{ message: string }> {
+        return super.delete<{ message: string }>(`/delete/${id}`)
     }
 
     // Helper method to get multiple employees by IDs

@@ -6,6 +6,7 @@ export { Input } from './Input'
 export { Card, CardContent, CardHeader, CardFooter } from './Card'
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './Table'
 export { Badge } from './Badge'
+export { Modal } from './Modal'
 
 // Loading Component
 export const Loading: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }) => {
@@ -17,6 +18,7 @@ export const Loading: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }
 
     return (
         <div className="flex items-center justify-center">
-        <div className={`${sizeClasses[size]} animate-spin rounded-full border-2 border-primary-200 border-t-primary-500`} > </div> </div>
+            <div className={`${sizeClasses[size]} animate-spin rounded-full border-2 border-primary-200 border-t-primary-500`}></div>
+        </div>
     )
 }
