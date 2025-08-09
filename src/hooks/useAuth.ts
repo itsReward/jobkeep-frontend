@@ -12,8 +12,6 @@ export const useAuth = () => {
             try {
                 const token = localStorage.getItem('accessToken')
                 if (token) {
-                    // In a real app, you'd decode the JWT or fetch user info
-                    // For now, we'll simulate getting user info from token
                     const userInfo = authService.getCurrentUser()
                     setUser(userInfo)
                 }

@@ -4,6 +4,16 @@ export interface User {
   role: string
 }
 
+export interface UserWithEmployee {
+  id: string
+  username: string
+  email: string
+  userRole: string
+  employeeId: string
+  employeeName: string
+  employeeSurname: string
+}
+
 export interface Client {
   id: string
   clientName: string
