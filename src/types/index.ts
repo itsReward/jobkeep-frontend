@@ -1,17 +1,96 @@
+// User interface for authentication and role management
 export interface User {
   id: string
   username: string
-  role: string
-}
-
-export interface UserWithEmployee {
-  id: string
-  username: string
   email: string
-  userRole: string
+  userRole: 'Admin' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
   employeeId: string
   employeeName: string
   employeeSurname: string
+}
+
+// Role-based access control types
+export type UserRole = 'Admin' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
+
+export interface RolePermissions {
+  canAccessClients: boolean
+  canAccessEmployees: boolean
+  canAccessFinancials: boolean
+  canAccessReports: boolean
+  canAccessSettings: boolean
+  canManageUsers: boolean
+  canManageInventory: boolean
+  canViewAllJobCards: boolean
+  canApproveRequisitions: boolean
+}
+
+// Role permissions mapping
+export const rolePermissions: Record<UserRole, RolePermissions> = {
+  Admin: {
+    canAccessClients: true,
+    canAccessEmployees: true,
+    canAccessFinancials: true,
+    canAccessReports: true,
+    canAccessSettings: true,
+    canManageUsers: true,
+    canManageInventory: true,
+    canViewAllJobCards: true,
+    canApproveRequisitions: true,
+  },
+  Manager: {
+    canAccessClients: false,
+    canAccessEmployees: true, // Read only
+    canAccessFinancials: false,
+    canAccessReports: true,
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageInventory: true,
+    canViewAllJobCards: true,
+    canApproveRequisitions: true,
+  },
+  'Service Advisor': {
+    canAccessClients: true,
+    canAccessEmployees: false,
+    canAccessFinancials: true, // Own job cards only
+    canAccessReports: false,
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewAllJobCards: false, // Own job cards only
+    canApproveRequisitions: false,
+  },
+  Technician: {
+    canAccessClients: false,
+    canAccessEmployees: false,
+    canAccessFinancials: false,
+    canAccessReports: false,
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewAllJobCards: false, // Assigned job cards only
+    canApproveRequisitions: false,
+  },
+  Stores: {
+    canAccessClients: false,
+    canAccessEmployees: false,
+    canAccessFinancials: false,
+    canAccessReports: false,
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageInventory: true,
+    canViewAllJobCards: false,
+    canApproveRequisitions: true,
+  },
+}
+
+// Helper function to get permissions for a role
+export const getPermissions = (role: UserRole): RolePermissions => {
+  return rolePermissions[role]
+}
+
+// Helper function to check if user has specific permission
+export const hasPermission = (role: UserRole, permission: keyof RolePermissions): boolean => {
+  return rolePermissions[role][permission]
 }
 
 export interface Client {

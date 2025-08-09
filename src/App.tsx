@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -6,14 +7,13 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import JobCardList from './pages/jobcards/JobCardList'
 import { Layout } from './components/layout/Layout'
-import { authService } from './services/api/auth'
+import { AuthProvider, useAuth } from '@/components/providers/AuthProvider'
 import ClientList from "@/pages/clients/ClientList"
 import VehicleList from '@/pages/vehicles/VehicleList'
 import {
     EmployeeList,
 } from '@/pages/employees/EmployeeList'
 import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
-import {InventoryPage} from "@/pages/inventory/InventoryPage.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -42,11 +42,40 @@ const queryClient = new QueryClient({
 })
 
 // Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const isAuthenticated = authService.isAuthenticated()
+const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
+                                                                                              children,
+                                                                                              allowedRoles
+                                                                                          }) => {
+    const { isAuthenticated, userRole, isLoading } = useAuth()
+
+    // Show loading while checking authentication
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+            </div>
+        )
+    }
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />
+    }
+
+    // Check role-based access if allowedRoles is specified
+    if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
+        return (
+            <Layout>
+                <div className="p-6 text-center">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+                    <p className="text-gray-600 mb-4">
+                        You don't have permission to access this page.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        Your role: <span className="font-medium">{userRole}</span>
+                    </p>
+                </div>
+            </Layout>
+        )
     }
 
     return <Layout>{children}</Layout>
@@ -54,7 +83,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Public Route component (redirects to dashboard if already authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const isAuthenticated = authService.isAuthenticated()
+    const { isAuthenticated, isLoading } = useAuth()
+
+    // Show loading while checking authentication
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
+            </div>
+        )
+    }
 
     if (isAuthenticated) {
         return <Navigate to="/dashboard" replace />
@@ -67,171 +105,164 @@ function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <Router>
-                <div className="h-screen bg-gray-50 overflow-hidden">
-                    <Routes>
-                        {/* Public Routes */}
-                        <Route
-                            path="/login"
-                            element={
-                                <PublicRoute>
-                                    <Login />
-                                </PublicRoute>
-                            }
-                        />
+                <AuthProvider>
+                    <div className="h-screen bg-gray-50 overflow-hidden">
+                        <Routes>
+                            {/* Public Routes */}
+                            <Route
+                                path="/login"
+                                element={
+                                    <PublicRoute>
+                                        <Login />
+                                    </PublicRoute>
+                                }
+                            />
 
-                        {/* Protected Routes */}
-                        <Route
-                            path="/dashboard"
-                            element={
-                                <ProtectedRoute>
-                                    <Dashboard />
-                                </ProtectedRoute>
-                            }
-                        />
+                            {/* Protected Routes */}
+                            <Route
+                                path="/dashboard"
+                                element={
+                                    <ProtectedRoute>
+                                        <Dashboard />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/jobcards"
-                            element={
-                                <ProtectedRoute>
-                                    <JobCardList />
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/jobcards"
+                                element={
+                                    <ProtectedRoute>
+                                        <JobCardList />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        {/* Placeholder routes for other sections */}
-                        <Route
-                            path="/clients"
-                            element={
-                                <ProtectedRoute>
-                                    <ClientList/>
-                                </ProtectedRoute>
-                            }
-                        />
+                            {/* Role-based protected routes */}
+                            <Route
+                                path="/clients"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin', 'Service Advisor']}>
+                                        <ClientList/>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/vehicles"
-                            element={
-                                <ProtectedRoute>
-                                    <VehicleList/>
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/vehicles"
+                                element={
+                                    <ProtectedRoute>
+                                        <VehicleList/>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/employees"
-                            element={
-                                <ProtectedRoute>
-                                    <EmployeeList/>
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/employees"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+                                        <EmployeeList/>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/appointments"
-                            element={
-                                <ProtectedRoute>
-                                    <div className="p-6">
-                                        <AppointmentList/>
-                                    </div>
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/appointments"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin', 'Manager', 'Service Advisor']}>
+                                        <div className="p-6">
+                                            <AppointmentList/>
+                                        </div>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/inventory"
-                            element={
-                                <ProtectedRoute>
-                                    <InventoryPage />
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/invoices"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin', 'Service Advisor']}>
+                                        <div className="p-6">
+                                            <h1 className="text-2xl font-bold">Invoices</h1>
+                                            <p className="text-gray-600">Coming soon...</p>
+                                        </div>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/invoices"
-                            element={
-                                <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Invoices</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/reports"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+                                        <div className="p-6">
+                                            <h1 className="text-2xl font-bold">Reports</h1>
+                                            <p className="text-gray-600">Coming soon...</p>
+                                        </div>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/reports"
-                            element={
-                                <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Reports</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/settings"
+                                element={
+                                    <ProtectedRoute allowedRoles={['Admin']}>
+                                        <div className="p-6">
+                                            <h1 className="text-2xl font-bold">Settings</h1>
+                                            <p className="text-gray-600">Coming soon...</p>
+                                        </div>
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/settings"
-                            element={
-                                <ProtectedRoute>
-                                    <div className="p-6">
-                                        <h1 className="text-2xl font-bold">Settings</h1>
-                                        <p className="text-gray-600">Coming soon...</p>
-                                    </div>
-                                </ProtectedRoute>
-                            }
-                        />
+                            {/* Default redirect */}
+                            <Route path="/" element={<Navigate to="/login" replace />} />
 
-                        {/* Default redirect */}
-                        <Route path="/" element={<Navigate to="/login" replace />} />
+                            {/* 404 Route */}
+                            <Route
+                                path="*"
+                                element={
+                                    <ProtectedRoute>
+                                        <div className="p-6 text-center">
+                                            <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
+                                            <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
+                                            <button
+                                                onClick={() => window.history.back()}
+                                                className="text-primary-600 hover:text-primary-500"
+                                            >
+                                                Go back
+                                            </button>
+                                        </div>
+                                    </ProtectedRoute>
+                                }
+                            />
+                        </Routes>
 
-                        {/* 404 Route */}
-                        <Route
-                            path="*"
-                            element={
-                                <ProtectedRoute>
-                                    <div className="p-6 text-center">
-                                        <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-                                        <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
-                                        <button
-                                            onClick={() => window.history.back()}
-                                            className="text-primary-600 hover:text-primary-500"
-                                        >
-                                            Go back
-                                        </button>
-                                    </div>
-                                </ProtectedRoute>
-                            }
-                        />
-                    </Routes>
-
-                    {/* Toast notifications */}
-                    <Toaster
-                        position="top-right"
-                        toastOptions={{
-                            duration: 4000,
-                            style: {
-                                background: '#fff',
-                                color: '#374151',
-                                borderRadius: '0.5rem',
-                                border: '1px solid #e5e7eb',
-                            },
-                            success: {
+                        {/* Toast notifications */}
+                        <Toaster
+                            position="top-right"
+                            toastOptions={{
+                                duration: 4000,
                                 style: {
-                                    border: '1px solid #10b981',
+                                    background: '#fff',
+                                    color: '#374151',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #e5e7eb',
                                 },
-                            },
-                            error: {
-                                style: {
-                                    border: '1px solid #ef4444',
+                                success: {
+                                    style: {
+                                        border: '1px solid #10b981',
+                                    },
                                 },
-                            },
-                        }}
-                    />
-                </div>
+                                error: {
+                                    style: {
+                                        border: '1px solid #ef4444',
+                                    },
+                                },
+                            }}
+                        />
+                    </div>
 
-                {/* React Query DevTools (only in development) */}
-                {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+                    {/* React Query DevTools (only in development) */}
+                    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+                </AuthProvider>
             </Router>
         </QueryClientProvider>
     )
