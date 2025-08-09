@@ -148,3 +148,156 @@ export type PaginatedResponse<T> = {
   limit: number
   totalPages: number
 }
+
+
+// src/types/inventory.ts
+export interface Product {
+  productId: string
+  productCode: string
+  productName: string
+  description?: string
+  unitPrice: number
+  costPrice?: number
+  stockLevel: number
+  minStockLevel: number
+  supplierName?: string
+  supplierId?: string
+  isActive: boolean
+  categories: string[]
+  compatibleVehicles: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateProductDto {
+  productCode: string
+  productName: string
+  description?: string
+  unitPrice: number
+  costPrice?: number
+  stockLevel?: number
+  minStockLevel?: number
+  supplierId?: string
+  isActive?: boolean
+}
+
+export interface ProductCategory {
+  categoryId: string
+  categoryName: string
+  description?: string
+  isActive: boolean
+  productCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateProductCategoryDto {
+  categoryName: string
+  description?: string
+  isActive?: boolean
+}
+
+export interface ProductCategoryWithProducts {
+  categoryId: string
+  categoryName: string
+  description?: string
+  isActive: boolean
+  products: Product[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Supplier {
+  supplierId: string
+  supplierName: string
+  companyName?: string
+  contactPerson?: string
+  email?: string
+  phone?: string
+  address?: string
+  paymentTerms?: string
+  taxNumber?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSupplierDto {
+  supplierName: string
+  companyName?: string
+  contactPerson?: string
+  email?: string
+  phone?: string
+  address?: string
+  paymentTerms?: string
+  taxNumber?: string
+}
+
+export interface ProductVehicle {
+  vehicleId: string
+  vehicleMake: string
+  vehicleModel: string
+  yearRange?: string
+  engineType?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateProductVehicle {
+  vehicleMake: string
+  vehicleModel: string
+  yearRange?: string
+  engineType?: string
+  isActive?: boolean
+}
+
+export interface ProductVehicleWithProducts {
+  vehicleId: string
+  vehicleMake: string
+  vehicleModel: string
+  yearRange?: string
+  engineType?: string
+  isActive: boolean
+  products: Product[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StockAdjustment {
+  productId: string
+  adjustmentType: 'IN' | 'OUT' | 'ADJUSTMENT'
+  quantity: number
+  reason: string
+  notes?: string
+  adjustedBy: string
+  adjustmentDate: string
+}
+
+export interface InventoryMetrics {
+  totalProducts: number
+  lowStockProducts: number
+  outOfStockProducts: number
+  totalCategories: number
+  totalSuppliers: number
+  totalInventoryValue: number
+  recentAdjustments: number
+}
+
+export interface InventoryFilter {
+  searchTerm?: string
+  categoryId?: string
+  vehicleId?: string
+  supplierId?: string
+  stockLevel?: 'low' | 'out' | 'normal' | 'all'
+  isActive?: boolean
+  minPrice?: number
+  maxPrice?: number
+}
+
+export interface BulkImportResult {
+  totalProcessed: number
+  successCount: number
+  errorCount: number
+  errors: string[]
+}

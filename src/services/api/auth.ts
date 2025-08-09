@@ -1,4 +1,5 @@
 import { ApiService } from './base'
+import {User} from "@/types";
 
 export interface LoginRequest {
   username: string
@@ -20,6 +21,10 @@ export class AuthService extends ApiService {
 
   async logout(): Promise<void> {
     localStorage.removeItem('accessToken')
+  }
+
+  async getCurrentUser(): Promise<User> {
+    return this.get<User>('/users/me')
   }
 
   isAuthenticated(): boolean {

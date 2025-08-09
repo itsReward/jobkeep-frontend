@@ -13,6 +13,7 @@ import {
     EmployeeList,
 } from '@/pages/employees/EmployeeList'
 import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
+import {InventoryPage} from "@/pages/inventory/InventoryPage.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -132,6 +133,15 @@ function App() {
                                     <div className="p-6">
                                         <AppointmentList/>
                                     </div>
+                                </ProtectedRoute>
+                            }
+                        />
+
+                        <Route
+                            path="/inventory"
+                            element={
+                                <ProtectedRoute>
+                                    <InventoryPage />
                                 </ProtectedRoute>
                             }
                         />
