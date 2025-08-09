@@ -1,4 +1,4 @@
-// src/pages/inventory/ProductList.tsx
+// src/pages/inventory/ProductList.tsx - Consistent with ClientList/EmployeeList
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
@@ -10,78 +10,61 @@ import {
     Trash2,
     Eye,
     BarChart3,
-    Upload,
-    Download,
-    AlertTriangle,
-    DollarSign,
     Package,
+    AlertTriangle,
+    ArrowUpDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/ui'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
-import { ProductFormModal } from '@/components/inventory/ProductFormModal'
-import { ProductViewModal } from '@/components/inventory/ProductViewModal'
-import { ProductRelationshipModal } from '@/components/inventory/ProductRelationshipModal'
-import { StockAdjustmentModal } from '@/components/inventory/StockAdjustmentModal'
-import { BulkImportModal } from '@/components/inventory/BulkImportModal'
-import { AdvancedFilterModal } from '@/components/inventory/AdvancedFilterModal'
-import { productService, productCategoryService, supplierService, productVehicleService } from '@/services/api/inventory'
-import { Product, InventoryFilter } from '@/types'
-import { formatCurrency, formatDate } from '@/utils/format'
-import { useAuth } from '@/hooks/useAuth'
+import { productService, productCategoryService, supplierService } from '@/services/api/inventory'
+import { Product, ProductCategory, Supplier } from '@/types'
+import { formatCurrency } from '@/utils/format'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { usePermissions } from '@/hooks/usePermissions'
+import { getProductCategories, getStockStatus } from '@/utils/productHelpers'
 
 export const ProductList: React.FC = () => {
     const queryClient = useQueryClient()
     const { user } = useAuth()
+    const { canManageInventory } = usePermissions()
 
-    // Check if user has inventory access
-    const hasInventoryAccess = ['admin', 'stores', 'serviceAdvisor'].includes(user?.role || '')
-
+    // State
     const [searchTerm, setSearchTerm] = useState('')
-    const [filters, setFilters] = useState<InventoryFilter>({})
     const [showFilters, setShowFilters] = useState(false)
-
-    // Modal states
-    const [formModalOpen, setFormModalOpen] = useState(false)
-    const [viewModalOpen, setViewModalOpen] = useState(false)
-    const [relationshipModalOpen, setRelationshipModalOpen] = useState(false)
-    const [stockModalOpen, setStockModalOpen] = useState(false)
-    const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false)
-    const [filterModalOpen, setFilterModalOpen] = useState(false)
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-    const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+    const [selectedCategory, setSelectedCategory] = useState('')
+    const [selectedSupplier, setSelectedSupplier] = useState('')
+    const [stockStatusFilter, setStockStatusFilter] = useState('')
 
     // Fetch data
-    const { data: products = [], isLoading, error, refetch } = useQuery({
+    const {
+        data: products = [],
+        isLoading,
+        error,
+        refetch
+    } = useQuery({
         queryKey: ['products'],
-        queryFn: productService.getAll.bind(productService),
-        enabled: hasInventoryAccess,
+        queryFn: productService.getAll,
+        enabled: canManageInventory,
     })
 
     const { data: categories = [] } = useQuery({
         queryKey: ['product-categories'],
-        queryFn: productCategoryService.getAll.bind(productCategoryService),
-        enabled: hasInventoryAccess,
+        queryFn: productCategoryService.getAll,
+        enabled: canManageInventory,
     })
 
     const { data: suppliers = [] } = useQuery({
         queryKey: ['suppliers'],
-        queryFn: supplierService.getAll.bind(supplierService),
-        enabled: hasInventoryAccess,
-    })
-
-    const { data: vehicles = [] } = useQuery({
-        queryKey: ['product-vehicles'],
-        queryFn: productVehicleService.getAll.bind(productVehicleService),
-        enabled: hasInventoryAccess,
+        queryFn: supplierService.getAll,
+        enabled: canManageInventory,
     })
 
     // Delete mutation
     const deleteMutation = useMutation({
-        mutationFn: productService.delete.bind(productService),
+        mutationFn: productService.delete,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['products'] })
             toast.success('Product deleted successfully!')
@@ -91,479 +74,446 @@ export const ProductList: React.FC = () => {
         },
     })
 
-    // Export mutation
-    const exportMutation = useMutation({
-        mutationFn: productService.exportProducts.bind(productService),
-        onSuccess: (blob) => {
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `products_${new Date().toISOString().split('T')[0]}.xlsx`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-            toast.success('Products exported successfully!')
-        },
-        onError: () => {
-            toast.error('Failed to export products')
-        },
-    })
+    // Get unique values for filters
+    const stockStatuses = [
+        { value: 'in-stock', label: 'In Stock' },
+        { value: 'low-stock', label: 'Low Stock' },
+        { value: 'out-of-stock', label: 'Out of Stock' },
+    ]
 
     // Filter products
     const filteredProducts = useMemo(() => {
-        let filtered = products
+        return products.filter(product => {
+            // Search term filter
+            if (searchTerm) {
+                const searchLower = searchTerm.toLowerCase()
+                const matchesSearch =
+                    product.productName?.toLowerCase().includes(searchLower) ||
+                    product.productCode?.toLowerCase().includes(searchLower) ||
+                    product.description?.toLowerCase().includes(searchLower) ||
+                    product.supplierName?.toLowerCase().includes(searchLower)
 
-        // Text search
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase()
-            filtered = filtered.filter(product =>
-                product.productName.toLowerCase().includes(term) ||
-                product.productCode.toLowerCase().includes(term) ||
-                product.description?.toLowerCase().includes(term) ||
-                product.supplierName?.toLowerCase().includes(term)
-            )
-        }
-
-        // Advanced filters
-        if (filters.categoryId) {
-            filtered = filtered.filter(product =>
-                product.categories.some(cat =>
-                    categories.find(c => c.categoryId === filters.categoryId)?.categoryName === cat
-                )
-            )
-        }
-
-        if (filters.supplierId) {
-            filtered = filtered.filter(product => product.supplierId === filters.supplierId)
-        }
-
-        if (filters.stockLevel) {
-            switch (filters.stockLevel) {
-                case 'low':
-                    filtered = filtered.filter(product =>
-                        product.stockLevel > 0 && product.stockLevel <= product.minStockLevel
-                    )
-                    break
-                case 'out':
-                    filtered = filtered.filter(product => product.stockLevel === 0)
-                    break
-                case 'normal':
-                    filtered = filtered.filter(product => product.stockLevel > product.minStockLevel)
-                    break
+                if (!matchesSearch) return false
             }
-        }
 
-        if (filters.isActive !== undefined) {
-            filtered = filtered.filter(product => product.isActive === filters.isActive)
-        }
+            // Category filter
+            if (selectedCategory) {
+                const categories = getProductCategories(product)
+                const matchesCategory = categories.some(cat =>
+                    cat.toLowerCase().includes(selectedCategory.toLowerCase())
+                )
+                if (!matchesCategory) return false
+            }
 
-        if (filters.minPrice) {
-            filtered = filtered.filter(product => product.unitPrice >= filters.minPrice!)
-        }
+            // Supplier filter
+            if (selectedSupplier && product.supplierId !== selectedSupplier) {
+                return false
+            }
 
-        if (filters.maxPrice) {
-            filtered = filtered.filter(product => product.unitPrice <= filters.maxPrice!)
-        }
+            // Stock status filter
+            if (stockStatusFilter) {
+                const stockStatus = getStockStatus(product)
+                const statusMap = {
+                    'in-stock': 'In Stock',
+                    'low-stock': 'Low Stock',
+                    'out-of-stock': 'Out of Stock',
+                }
+                if (stockStatus.label !== statusMap[stockStatusFilter as keyof typeof statusMap]) {
+                    return false
+                }
+            }
 
-        return filtered
-    }, [products, searchTerm, filters, categories])
+            return true
+        })
+    }, [products, searchTerm, selectedCategory, selectedSupplier, stockStatusFilter])
 
-    const handleEdit = (product: Product) => {
-        setSelectedProduct(product)
-        setFormMode('edit')
-        setFormModalOpen(true)
+    // Handlers
+    const handleCreateProduct = () => {
+        // Navigate to create product or open modal
+        console.log('Create product')
     }
 
-    const handleView = (product: Product) => {
-        setSelectedProduct(product)
-        setViewModalOpen(true)
+    const handleEditProduct = (product: Product) => {
+        console.log('Edit product:', product)
     }
 
-    const handleManageRelationships = (product: Product) => {
-        setSelectedProduct(product)
-        setRelationshipModalOpen(true)
+    const handleViewProduct = (product: Product) => {
+        console.log('View product:', product)
     }
 
-    const handleStockAdjustment = (product: Product) => {
-        setSelectedProduct(product)
-        setStockModalOpen(true)
-    }
-
-    const handleDelete = (product: Product) => {
+    const handleDeleteProduct = (product: Product) => {
         if (window.confirm(`Are you sure you want to delete "${product.productName}"?`)) {
             deleteMutation.mutate(product.productId)
         }
     }
 
-    const getStockStatus = (product: Product) => {
-        if (product.stockLevel === 0) {
-            return { label: 'Out of Stock', variant: 'error' as const }
-        } else if (product.stockLevel <= product.minStockLevel) {
-            return { label: 'Low Stock', variant: 'warning' as const }
-        } else {
-            return { label: 'In Stock', variant: 'success' as const }
-        }
+    const handleStockAdjustment = (product: Product) => {
+        console.log('Stock adjustment:', product)
     }
 
-    if (!hasInventoryAccess) {
-        return (
-            <div className="p-6 text-center">
-                <div className="mx-auto max-w-md">
-                    <Package className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                        You don't have permission to access inventory management.
-                    </p>
-                </div>
-            </div>
-        )
+    const clearFilters = () => {
+        setSelectedCategory('')
+        setSelectedSupplier('')
+        setStockStatusFilter('')
     }
 
-    if (isLoading) {
+    // Access control
+    if (!canManageInventory) {
         return (
             <div className="p-6">
-                <Loading size="lg" />
+                <Card>
+                    <CardContent className="text-center py-12">
+                        <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+                        <p className="text-gray-600 mb-4">
+                            You don't have permission to access inventory management.
+                        </p>
+                        <div className="text-sm text-gray-500">
+                            <p>User Role: {user?.userRole || 'None'}</p>
+                            <p>Required: Admin, Manager, or Stores</p>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
 
+    // Error state
     if (error) {
         return (
-            <div className="p-6 text-center">
-                <div className="mx-auto max-w-md">
-                    <AlertTriangle className="mx-auto h-12 w-12 text-red-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading products</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                        There was an error loading the products. Please try again.
-                    </p>
-                    <Button onClick={() => refetch()} className="mt-4">
-                        Try Again
-                    </Button>
-                </div>
+            <div className="p-6">
+                <Card>
+                    <CardContent className="text-center py-12">
+                        <AlertTriangle className="h-12 w-12 text-red-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Products</h3>
+                        <p className="text-red-600 mb-4">Failed to load products</p>
+                        <Button onClick={() => refetch()} variant="outline">
+                            Try Again
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
 
     return (
         <div className="p-6 space-y-6">
-            {/* Header Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                <div className="flex-1 flex gap-4">
-                    <div className="flex-1 max-w-md">
-                        <Input
-                            placeholder="Search products..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            icon={Search}
-                        />
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                    <Package className="h-8 w-8 text-primary-600" />
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+                        <p className="text-gray-600">Manage your product inventory</p>
                     </div>
-                    <Button
-                        variant="outline"
-                        onClick={() => setFilterModalOpen(true)}
-                        className={showFilters ? 'bg-primary-50 border-primary-200' : ''}
-                    >
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filters
-                    </Button>
                 </div>
-
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => setBulkImportModalOpen(true)}
-                    >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => exportMutation.mutate()}
-                        disabled={exportMutation.isPending}
-                    >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            setSelectedProduct(null)
-                            setFormMode('create')
-                            setFormModalOpen(true)
-                        }}
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Product
-                    </Button>
-                </div>
+                <Button onClick={handleCreateProduct} className="flex items-center space-x-2">
+                    <Plus className="h-4 w-4" />
+                    <span>Add Product</span>
+                </Button>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Total Products</p>
-                                <p className="text-2xl font-bold">{filteredProducts.length}</p>
+            {/* Search and Filters */}
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        {/* Search */}
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Search products by name, code, description, or supplier..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10"
+                                />
                             </div>
-                            <Package className="h-8 w-8 text-primary-600" />
                         </div>
-                    </CardContent>
-                </Card>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Low Stock</p>
-                                <p className="text-2xl font-bold text-warning-600">
-                                    {filteredProducts.filter(p => p.stockLevel > 0 && p.stockLevel <= p.minStockLevel).length}
-                                </p>
-                            </div>
-                            <AlertTriangle className="h-8 w-8 text-warning-600" />
-                        </div>
-                    </CardContent>
-                </Card>
+                        {/* Filter Toggle */}
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="flex items-center space-x-2"
+                        >
+                            <Filter className="h-4 w-4" />
+                            <span>Filters</span>
+                            {(selectedCategory || selectedSupplier || stockStatusFilter) && (
+                                <Badge variant="secondary" className="ml-2">
+                                    {[selectedCategory, selectedSupplier, stockStatusFilter].filter(Boolean).length}
+                                </Badge>
+                            )}
+                        </Button>
+                    </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Out of Stock</p>
-                                <p className="text-2xl font-bold text-error-600">
-                                    {filteredProducts.filter(p => p.stockLevel === 0).length}
-                                </p>
-                            </div>
-                            <AlertTriangle className="h-8 w-8 text-error-600" />
-                        </div>
-                    </CardContent>
-                </Card>
+                    {/* Expanded Filters */}
+                    {showFilters && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Category Filter */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Category
+                                    </label>
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) => setSelectedCategory(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    >
+                                        <option value="">All Categories</option>
+                                        {categories.map(category => (
+                                            <option key={category.categoryId} value={category.categoryName}>
+                                                {category.categoryName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Total Value</p>
-                                <p className="text-2xl font-bold">
-                                    {formatCurrency(
-                                        filteredProducts.reduce((sum, p) => sum + (p.unitPrice * p.stockLevel), 0)
-                                    )}
-                                </p>
+                                {/* Supplier Filter */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Supplier
+                                    </label>
+                                    <select
+                                        value={selectedSupplier}
+                                        onChange={(e) => setSelectedSupplier(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    >
+                                        <option value="">All Suppliers</option>
+                                        {suppliers.map(supplier => (
+                                            <option key={supplier.supplierId} value={supplier.supplierId}>
+                                                {supplier.supplierName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Stock Status Filter */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Stock Status
+                                    </label>
+                                    <select
+                                        value={stockStatusFilter}
+                                        onChange={(e) => setStockStatusFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    >
+                                        <option value="">All Status</option>
+                                        {stockStatuses.map(status => (
+                                            <option key={status.value} value={status.value}>
+                                                {status.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                            <DollarSign className="h-8 w-8 text-success-600" />
+
+                            {/* Clear Filters */}
+                            {(selectedCategory || selectedSupplier || stockStatusFilter) && (
+                                <div className="mt-4">
+                                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                                        Clear Filters
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                    </CardContent>
-                </Card>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Results Summary */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                    Showing {filteredProducts.length} of {products.length} products
+                </p>
             </div>
 
             {/* Products Table */}
             <Card>
-                <CardHeader>
-                    <h3 className="text-lg font-medium">Products ({filteredProducts.length})</h3>
-                </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Code</TableHead>
-                                    <TableHead>Stock</TableHead>
-                                    <TableHead>Price</TableHead>
-                                    <TableHead>Supplier</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loading size="lg" />
+                        </div>
+                    ) : filteredProducts.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-500 mb-4">
+                                {products?.length === 0
+                                    ? "No products found. Create your first product to get started."
+                                    : "No products match your current filters."
+                                }
+                            </p>
+                            {products?.length === 0 ? (
+                                <Button onClick={handleCreateProduct}>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add First Product
+                                </Button>
+                            ) : (
+                                <Button variant="outline" onClick={clearFilters}>
+                                    Clear Filters
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Product
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Code
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Categories
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Stock
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Price
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Supplier
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
                                 {filteredProducts.map((product) => {
+                                    const categories = getProductCategories(product)
                                     const stockStatus = getStockStatus(product)
 
                                     return (
-                                        <TableRow key={product.productId}>
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-medium text-gray-900">
-                                                        {product.productName}
+                                        <tr key={product.productId} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="flex-shrink-0 h-10 w-10">
+                                                        <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                                                            <Package className="h-5 w-5 text-primary-600" />
+                                                        </div>
                                                     </div>
-                                                    {product.description && (
-                                                        <div className="text-sm text-gray-500 truncate max-w-xs">
-                                                            {product.description}
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {product.productName}
                                                         </div>
+                                                        {product.description && (
+                                                            <div className="text-sm text-gray-500">
+                                                                {product.description.length > 50
+                                                                    ? `${product.description.substring(0, 50)}...`
+                                                                    : product.description
+                                                                }
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-mono text-gray-900">
+                                                    {product.productCode}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {categories.length > 0 ? (
+                                                        categories.slice(0, 2).map((category, index) => (
+                                                            <Badge key={index} variant="secondary" className="text-xs">
+                                                                {category}
+                                                            </Badge>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-sm text-gray-400">None</span>
                                                     )}
-                                                    {product.categories.length > 0 && (
-                                                        <div className="flex gap-1 mt-1">
-                                                            {product.categories.slice(0, 2).map((category, index) => (
-                                                                <Badge key={index} variant="secondary" className="text-xs">
-                                                                    {category}
-                                                                </Badge>
-                                                            ))}
-                                                            {product.categories.length > 2 && (
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    +{product.categories.length - 2}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
+                                                    {categories.length > 2 && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            +{categories.length - 2}
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                                                    {product.productCode}
-                                                </code>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium">{product.stockLevel}</span>
-                                                        <Badge variant={stockStatus.variant} className="text-xs">
-                                                            {stockStatus.label}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center space-x-2">
+                                                    <Badge
+                                                        variant={stockStatus.variant}
+                                                        className="text-xs"
+                                                    >
+                                                        {stockStatus.label}
+                                                    </Badge>
+                                                    <span className="text-sm text-gray-600">
+                                                            {product.stockLevel || 0}
+                                                        </span>
+                                                </div>
+                                                {product.minStockLevel > 0 && (
+                                                    <div className="text-xs text-gray-400">
                                                         Min: {product.minStockLevel}
                                                     </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-medium">
-                                                        {formatCurrency(product.unitPrice)}
-                                                    </div>
-                                                    {product.costPrice && (
-                                                        <div className="text-sm text-gray-500">
-                                                            Cost: {formatCurrency(product.costPrice)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {product.supplierName ? (
-                                                    <span className="text-sm">{product.supplierName}</span>
-                                                ) : (
-                                                    <span className="text-sm text-gray-400">No supplier</span>
                                                 )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={product.isActive ? 'success' : 'secondary'}>
-                                                    {product.isActive ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {formatCurrency(product.unitPrice || 0)}
+                                                </div>
+                                                {product.costPrice && (
+                                                    <div className="text-xs text-gray-500">
+                                                        Cost: {formatCurrency(product.costPrice)}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-900">
+                                                    {product.supplierName || 'No supplier'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex items-center justify-end space-x-2">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleView(product)}
+                                                        onClick={() => handleViewProduct(product)}
+                                                        className="text-gray-400 hover:text-gray-600"
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleEdit(product)}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
                                                         onClick={() => handleStockAdjustment(product)}
+                                                        className="text-blue-400 hover:text-blue-600"
                                                     >
                                                         <BarChart3 className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleManageRelationships(product)}
+                                                        onClick={() => handleEditProduct(product)}
+                                                        className="text-blue-400 hover:text-blue-600"
                                                     >
-                                                        <Package className="h-4 w-4" />
+                                                        <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleDelete(product)}
-                                                        className="text-red-600 hover:text-red-700"
+                                                        onClick={() => handleDeleteProduct(product)}
+                                                        className="text-red-400 hover:text-red-600"
+                                                        disabled={deleteMutation.isPending}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
-                                            </TableCell>
-                                        </TableRow>
+                                            </td>
+                                        </tr>
                                     )
                                 })}
-                            </TableBody>
-                        </Table>
-
-                        {filteredProducts.length === 0 && (
-                            <div className="text-center py-12">
-                                <Package className="mx-auto h-12 w-12 text-gray-400" />
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    {searchTerm || Object.keys(filters).length > 0
-                                        ? 'Try adjusting your search criteria.'
-                                        : 'Get started by adding your first product.'}
-                                </p>
-                                {!searchTerm && Object.keys(filters).length === 0 && (
-                                    <Button
-                                        className="mt-4"
-                                        onClick={() => {
-                                            setSelectedProduct(null)
-                                            setFormMode('create')
-                                            setFormModalOpen(true)
-                                        }}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Add Product
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
-
-            {/* Modals */}
-            <ProductFormModal
-                isOpen={formModalOpen}
-                onClose={() => setFormModalOpen(false)}
-                product={selectedProduct}
-                mode={formMode}
-            />
-
-            <ProductViewModal
-                isOpen={viewModalOpen}
-                onClose={() => setViewModalOpen(false)}
-                productId={selectedProduct?.productId || null}
-            />
-
-            <ProductRelationshipModal
-                isOpen={relationshipModalOpen}
-                onClose={() => setRelationshipModalOpen(false)}
-                product={selectedProduct}
-            />
-
-            <StockAdjustmentModal
-                isOpen={stockModalOpen}
-                onClose={() => setStockModalOpen(false)}
-                product={selectedProduct}
-            />
-
-            <BulkImportModal
-                isOpen={bulkImportModalOpen}
-                onClose={() => setBulkImportModalOpen(false)}
-                type="products"
-            />
-
-            <AdvancedFilterModal
-                isOpen={filterModalOpen}
-                onClose={() => setFilterModalOpen(false)}
-                filters={filters}
-                onApplyFilters={setFilters}
-                categories={categories}
-                suppliers={suppliers}
-                vehicles={vehicles}
-            />
         </div>
     )
 }

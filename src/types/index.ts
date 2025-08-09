@@ -3,14 +3,14 @@ export interface User {
   id: string
   username: string
   email: string
-  userRole: 'Admin' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
+  userRole: 'ADMIN' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
   employeeId: string
   employeeName: string
   employeeSurname: string
 }
 
 // Role-based access control types
-export type UserRole = 'Admin' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
+export type UserRole = 'ADMIN' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
 
 export interface RolePermissions {
   canAccessClients: boolean
@@ -26,7 +26,7 @@ export interface RolePermissions {
 
 // Role permissions mapping
 export const rolePermissions: Record<UserRole, RolePermissions> = {
-  Admin: {
+  ADMIN: {
     canAccessClients: true,
     canAccessEmployees: true,
     canAccessFinancials: true,

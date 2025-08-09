@@ -14,6 +14,7 @@ import {
     EmployeeList,
 } from '@/pages/employees/EmployeeList'
 import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
+import {ProductList} from "@/pages/inventory/ProductList.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -141,7 +142,7 @@ function App() {
                             <Route
                                 path="/clients"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin', 'Service Advisor']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
                                         <ClientList/>
                                     </ProtectedRoute>
                                 }
@@ -159,7 +160,7 @@ function App() {
                             <Route
                                 path="/employees"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
                                         <EmployeeList/>
                                     </ProtectedRoute>
                                 }
@@ -168,7 +169,7 @@ function App() {
                             <Route
                                 path="/appointments"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin', 'Manager', 'Service Advisor']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager', 'Service Advisor']}>
                                         <div className="p-6">
                                             <AppointmentList/>
                                         </div>
@@ -179,7 +180,7 @@ function App() {
                             <Route
                                 path="/invoices"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin', 'Service Advisor']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
                                         <div className="p-6">
                                             <h1 className="text-2xl font-bold">Invoices</h1>
                                             <p className="text-gray-600">Coming soon...</p>
@@ -189,9 +190,18 @@ function App() {
                             />
 
                             <Route
+                                path="/inventory"
+                                element={
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
+                                        <ProductList/>
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
                                 path="/reports"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
                                         <div className="p-6">
                                             <h1 className="text-2xl font-bold">Reports</h1>
                                             <p className="text-gray-600">Coming soon...</p>
@@ -203,7 +213,7 @@ function App() {
                             <Route
                                 path="/settings"
                                 element={
-                                    <ProtectedRoute allowedRoles={['Admin']}>
+                                    <ProtectedRoute allowedRoles={['ADMIN']}>
                                         <div className="p-6">
                                             <h1 className="text-2xl font-bold">Settings</h1>
                                             <p className="text-gray-600">Coming soon...</p>

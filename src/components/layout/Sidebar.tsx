@@ -25,61 +25,61 @@ const menuItems = [
     title: 'Dashboard',
     href: ROUTES.DASHBOARD,
     icon: LayoutDashboard,
-    roles: ['Admin', 'Manager', 'Service Advisor', 'Technician'] // All roles can access dashboard
+    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles can access dashboard
   },
   {
     title: 'Clients',
     href: ROUTES.CLIENTS,
     icon: Users,
-    roles: ['Admin', 'Service Advisor'] // Only Admin and Service Advisor can access clients
+    roles: ['ADMIN', 'Service Advisor'] // Only Admin and Service Advisor can access clients
   },
   {
     title: 'Vehicles',
     href: ROUTES.VEHICLES,
     icon: Car,
-    roles: ['Admin', 'Manager', 'Service Advisor', 'Technician'] // All roles except for specific restrictions
+    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles except for specific restrictions
   },
   {
     title: 'Employees',
     href: ROUTES.EMPLOYEES,
     icon: UserCheck,
-    roles: ['Admin', 'Manager'] // Only Admin and Manager can access employee management
+    roles: ['ADMIN', 'Manager'] // Only Admin and Manager can access employee management
   },
   {
     title: 'Job Cards',
     href: ROUTES.JOBCARDS,
     icon: ClipboardList,
-    roles: ['Admin', 'Manager', 'Service Advisor', 'Technician'] // All roles can access job cards (filtered by role on backend)
+    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles can access job cards (filtered by role on backend)
   },
   {
     title: 'Appointments',
     href: ROUTES.APPOINTMENTS,
     icon: Calendar,
-    roles: ['Admin', 'Manager', 'Service Advisor'] // Technicians don't need appointment management
+    roles: ['ADMIN', 'Manager', 'Service Advisor'] // Technicians don't need appointment management
   },
   {
     title: 'Invoices',
     href: ROUTES.INVOICES,
     icon: FileText,
-    roles: ['Admin', 'Service Advisor'] // Only Admin and Service Advisor can access financial data
+    roles: ['ADMIN', 'Service Advisor'] // Only Admin and Service Advisor can access financial data
   },
   {
     title: 'Inventory',
     href: '/inventory',
     icon: Package,
-    roles: ['Admin', 'Manager', 'Stores'] // Inventory management for specific roles
+    roles: ['ADMIN', 'Manager', 'Stores'] // Inventory management for specific roles
   },
   {
     title: 'Reports',
     href: ROUTES.REPORTS,
     icon: BarChart3,
-    roles: ['Admin', 'Manager'] // Only Admin and Manager can access reports
+    roles: ['ADMIN', 'Manager'] // Only Admin and Manager can access reports
   },
   {
     title: 'Settings',
     href: ROUTES.SETTINGS,
     icon: Settings,
-    roles: ['Admin'] // Only Admin can access system settings
+    roles: ['ADMIN'] // Only Admin can access system settings
   },
 ]
 

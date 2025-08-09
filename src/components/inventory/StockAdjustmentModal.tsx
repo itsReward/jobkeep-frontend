@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { productService } from '@/services/api/inventory'
 import { Product, StockAdjustment } from '@/types'
 import { formatCurrency } from '@/utils/format'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 const schema = yup.object({
     adjustmentType: yup.string().oneOf(['IN', 'OUT', 'ADJUSTMENT']).required('Adjustment type is required'),
