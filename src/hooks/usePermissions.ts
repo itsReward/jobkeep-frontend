@@ -35,9 +35,9 @@ export const usePermissions = (): UsePermissionsReturn => {
     }, [userRole])
 
     const roleCheckers = useMemo(() => ({
-        isAdmin: userRole === 'Admin',
+        isAdmin: userRole === 'ADMIN',
         isManager: userRole === 'Manager',
-        isServiceAdvisor: userRole === 'Service Advisor',
+        isServiceAdvisor: userRole === 'SERVICE_ADVISOR',
         isTechnician: userRole === 'Technician',
         isStores: userRole === 'Stores',
     }), [userRole])

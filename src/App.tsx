@@ -15,6 +15,7 @@ import {
 } from '@/pages/employees/EmployeeList'
 import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
 import {ProductList} from "@/pages/inventory/ProductList.tsx";
+import {ApiDebugTrigger} from "@/components/debug/ApiDebugPanel.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -104,177 +105,180 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 function App() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <Router>
-                <AuthProvider>
-                    <div className="h-screen bg-gray-50 overflow-hidden">
-                        <Routes>
-                            {/* Public Routes */}
-                            <Route
-                                path="/login"
-                                element={
-                                    <PublicRoute>
-                                        <Login />
-                                    </PublicRoute>
-                                }
-                            />
+        <div className="App">
+            <QueryClientProvider client={queryClient}>
+                <Router>
+                    <AuthProvider>
+                        <div className="h-screen bg-gray-50 overflow-hidden">
+                            <Routes>
+                                {/* Public Routes */}
+                                <Route
+                                    path="/login"
+                                    element={
+                                        <PublicRoute>
+                                            <Login />
+                                        </PublicRoute>
+                                    }
+                                />
 
-                            {/* Protected Routes */}
-                            <Route
-                                path="/dashboard"
-                                element={
-                                    <ProtectedRoute>
-                                        <Dashboard />
-                                    </ProtectedRoute>
-                                }
-                            />
+                                {/* Protected Routes */}
+                                <Route
+                                    path="/dashboard"
+                                    element={
+                                        <ProtectedRoute>
+                                            <Dashboard />
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/jobcards"
-                                element={
-                                    <ProtectedRoute>
-                                        <JobCardList />
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/jobcards"
+                                    element={
+                                        <ProtectedRoute>
+                                            <JobCardList />
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            {/* Role-based protected routes */}
-                            <Route
-                                path="/clients"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
-                                        <ClientList/>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                {/* Role-based protected routes */}
+                                <Route
+                                    path="/clients"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
+                                            <ClientList/>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/vehicles"
-                                element={
-                                    <ProtectedRoute>
-                                        <VehicleList/>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/vehicles"
+                                    element={
+                                        <ProtectedRoute>
+                                            <VehicleList/>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/employees"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
-                                        <EmployeeList/>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/employees"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
+                                            <EmployeeList/>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/appointments"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager', 'Service Advisor']}>
-                                        <div className="p-6">
-                                            <AppointmentList/>
-                                        </div>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/appointments"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Manager', 'Service Advisor']}>
+                                            <div className="p-6">
+                                                <AppointmentList/>
+                                            </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/invoices"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
-                                        <div className="p-6">
-                                            <h1 className="text-2xl font-bold">Invoices</h1>
-                                            <p className="text-gray-600">Coming soon...</p>
-                                        </div>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/invoices"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
+                                            <div className="p-6">
+                                                <h1 className="text-2xl font-bold">Invoices</h1>
+                                                <p className="text-gray-600">Coming soon...</p>
+                                            </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/inventory"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
-                                        <ProductList/>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/inventory"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
+                                            <ProductList/>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/reports"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
-                                        <div className="p-6">
-                                            <h1 className="text-2xl font-bold">Reports</h1>
-                                            <p className="text-gray-600">Coming soon...</p>
-                                        </div>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/reports"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN', 'Manager']}>
+                                            <div className="p-6">
+                                                <h1 className="text-2xl font-bold">Reports</h1>
+                                                <p className="text-gray-600">Coming soon...</p>
+                                            </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            <Route
-                                path="/settings"
-                                element={
-                                    <ProtectedRoute allowedRoles={['ADMIN']}>
-                                        <div className="p-6">
-                                            <h1 className="text-2xl font-bold">Settings</h1>
-                                            <p className="text-gray-600">Coming soon...</p>
-                                        </div>
-                                    </ProtectedRoute>
-                                }
-                            />
+                                <Route
+                                    path="/settings"
+                                    element={
+                                        <ProtectedRoute allowedRoles={['ADMIN']}>
+                                            <div className="p-6">
+                                                <h1 className="text-2xl font-bold">Settings</h1>
+                                                <p className="text-gray-600">Coming soon...</p>
+                                            </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
 
-                            {/* Default redirect */}
-                            <Route path="/" element={<Navigate to="/login" replace />} />
+                                {/* Default redirect */}
+                                <Route path="/" element={<Navigate to="/login" replace />} />
 
-                            {/* 404 Route */}
-                            <Route
-                                path="*"
-                                element={
-                                    <ProtectedRoute>
-                                        <div className="p-6 text-center">
-                                            <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-                                            <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
-                                            <button
-                                                onClick={() => window.history.back()}
-                                                className="text-primary-600 hover:text-primary-500"
-                                            >
-                                                Go back
-                                            </button>
-                                        </div>
-                                    </ProtectedRoute>
-                                }
-                            />
-                        </Routes>
+                                {/* 404 Route */}
+                                <Route
+                                    path="*"
+                                    element={
+                                        <ProtectedRoute>
+                                            <div className="p-6 text-center">
+                                                <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
+                                                <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
+                                                <button
+                                                    onClick={() => window.history.back()}
+                                                    className="text-primary-600 hover:text-primary-500"
+                                                >
+                                                    Go back
+                                                </button>
+                                            </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
+                            </Routes>
 
-                        {/* Toast notifications */}
-                        <Toaster
-                            position="top-right"
-                            toastOptions={{
-                                duration: 4000,
-                                style: {
-                                    background: '#fff',
-                                    color: '#374151',
-                                    borderRadius: '0.5rem',
-                                    border: '1px solid #e5e7eb',
-                                },
-                                success: {
+                            {/* Toast notifications */}
+                            <Toaster
+                                position="top-right"
+                                toastOptions={{
+                                    duration: 4000,
                                     style: {
-                                        border: '1px solid #10b981',
+                                        background: '#fff',
+                                        color: '#374151',
+                                        borderRadius: '0.5rem',
+                                        border: '1px solid #e5e7eb',
                                     },
-                                },
-                                error: {
-                                    style: {
-                                        border: '1px solid #ef4444',
+                                    success: {
+                                        style: {
+                                            border: '1px solid #10b981',
+                                        },
                                     },
-                                },
-                            }}
-                        />
-                    </div>
+                                    error: {
+                                        style: {
+                                            border: '1px solid #ef4444',
+                                        },
+                                    },
+                                }}
+                            />
+                        </div>
 
-                    {/* React Query DevTools (only in development) */}
-                    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
-                </AuthProvider>
-            </Router>
-        </QueryClientProvider>
+                        {/* React Query DevTools (only in development) */}
+                        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+                    </AuthProvider>
+                </Router>
+            </QueryClientProvider>
+            <ApiDebugTrigger/>
+        </div>
     )
 }
 
