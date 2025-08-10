@@ -50,6 +50,14 @@ export const ProductList: React.FC = () => {
         enabled: canManageInventory,
     })
 
+    console.log('🔍 ProductList Debug Info:', {
+        user,
+        userRole: user?.userRole,
+        canManageInventory,
+        isAuthenticated: !!user,
+        isLoading
+    })
+
     const { data: categories = [] } = useQuery({
         queryKey: ['product-categories'],
         queryFn: productCategoryService.getAll,
