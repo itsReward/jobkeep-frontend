@@ -1,4 +1,4 @@
-// src/pages/inventory/modals/ProductViewModal.tsx
+// src/components/inventory/ProductViewModal.tsx - FIXED VERSION
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -8,10 +8,12 @@ import {
     BarChart3,
     Truck,
     Tags,
-    Car,
     Calendar,
     AlertTriangle,
     CheckCircle,
+    Info,
+    TrendingUp,
+    Warehouse
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -19,7 +21,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/ui'
 import { productService } from '@/services/api/inventory'
-import { formatCurrency, formatDate, formatStockLevel } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
+import { getStockStatusInfo, calculateMarkupPercentage } from '@/utils/productHelpers'
+import { Product } from '@/types'
 
 interface ProductViewModalProps {
     isOpen: boolean
@@ -34,7 +38,7 @@ export const ProductViewModal: React.FC<ProductViewModalProps> = ({
                                                                       onEdit,
                                                                       productId,
                                                                   }) => {
-    const { data: product, isLoading } = useQuery({
+    const { data: product, isLoading, error } = useQuery({
         queryKey: ['products', productId, 'full'],
         queryFn: () => productService.getByIdFull(productId!),
         enabled: !!productId && isOpen,
@@ -42,21 +46,29 @@ export const ProductViewModal: React.FC<ProductViewModalProps> = ({
 
     if (!isOpen) return null
 
-    const stockStatus = product ? formatStockLevel(product.stockLevel, product.minStockLevel) : null
-    const profitMargin = product?.costPrice && product.unitPrice > 0
-        ? ((product.unitPrice - product.costPrice) / product.unitPrice * 100).toFixed(2)
-        : null
+    const stockInfo = product ? getStockStatusInfo(product) : null
+    const markupPercentage = product ? calculateMarkupPercentage(product.costPrice, product.sellingPrice) : 0
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={product ? product.productName : 'Product Details'}
+            title="Product Details"
             size="xl"
         >
             {isLoading ? (
-                <div className="py-8">
-                    <Loading size="lg" />
+                <div className="py-8 text-center">
+                    <Loading className="mx-auto mb-4" />
+                    <p className="text-gray-600">Loading product details...</p>
+                </div>
+            ) : error ? (
+                <div className="py-8 text-center">
+                    <AlertTriangle className="h-12 w-12 text-red-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Product</h3>
+                    <p className="text-red-600 mb-4">Failed to load product details</p>
+                    <Button onClick={onClose} variant="outline">
+                        Close
+                    </Button>
                 </div>
             ) : product ? (
                 <div className="space-y-6">
@@ -69,40 +81,147 @@ export const ProductViewModal: React.FC<ProductViewModalProps> = ({
                                     {product.isActive ? 'Active' : 'Inactive'}
                                 </Badge>
                             </div>
-                            <p className="text-gray-600">Product Code: <code className="bg-gray-100 px-2 py-1 rounded text-sm">{product.productCode}</code></p>
-                            {product.description && (
-                                <p className="text-gray-600 mt-2">{product.description}</p>
-                            )}
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span className="flex items-center gap-1">
+                                    <Package className="h-4 w-4" />
+                                    {product.productCode}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Tags className="h-4 w-4" />
+                                    {product.categoryName}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Truck className="h-4 w-4" />
+                                    {product.supplierName}
+                                </span>
+                            </div>
                         </div>
-                        <Button onClick={onEdit} className="ml-4">
-                            <Edit className="h-4 w-4 mr-2" />
+                        <Button onClick={onEdit} className="flex items-center gap-2">
+                            <Edit className="h-4 w-4" />
                             Edit Product
                         </Button>
                     </div>
 
-                    {/* Stock Alert */}
-                    {stockStatus && (stockStatus.level === 'low' || stockStatus.level === 'out') && (
-                        <div className={`rounded-lg p-4 ${
-                            stockStatus.level === 'out'
-                                ? 'bg-red-50 border border-red-200'
-                                : 'bg-orange-50 border border-orange-200'
-                        }`}>
-                            <div className="flex items-center gap-2">
-                                <AlertTriangle className={`h-5 w-5 ${
-                                    stockStatus.level === 'out' ? 'text-red-600' : 'text-orange-600'
-                                }`} />
-                                <p className={`font-medium ${
-                                    stockStatus.level === 'out' ? 'text-red-800' : 'text-orange-800'
-                                }`}>
-                                    {stockStatus.label}: {product.stockLevel} units remaining
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Main Information Grid */}
+                    {/* Main Content Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Pricing & Financial */}
+                        {/* Product Information */}
+                        <Card>
+                            <CardHeader>
+                                <h3 className="text-lg font-medium flex items-center gap-2">
+                                    <Info className="h-5 w-5" />
+                                    Product Information
+                                </h3>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Product Name</label>
+                                    <p className="text-gray-900 font-medium">{product.productName}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Product Code</label>
+                                    <p className="text-gray-900 font-mono">{product.productCode}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Brand</label>
+                                    <p className="text-gray-900">{product.brand}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                                    <p className="text-gray-900">{product.description || 'No description provided'}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Unit of Measure</label>
+                                    <p className="text-gray-900">{product.unitOfMeasure}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Category</label>
+                                    <div className="flex items-center gap-2">
+                                        <Tags className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-900">{product.categoryName}</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                                    <div className="flex items-center gap-2">
+                                        <Truck className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-900">{product.supplierName}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Stock Information */}
+                        <Card>
+                            <CardHeader>
+                                <h3 className="text-lg font-medium flex items-center gap-2">
+                                    <Warehouse className="h-5 w-5" />
+                                    Stock Information
+                                </h3>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Current Stock</p>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {product.currentStock} {product.unitOfMeasure}
+                                        </p>
+                                    </div>
+                                    {stockInfo && (
+                                        <div className="text-right">
+                                            <Badge variant={stockInfo.color}>
+                                                {stockInfo.label}
+                                            </Badge>
+                                            <p className="text-xs text-gray-500 mt-1">{stockInfo.description}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Minimum Stock</label>
+                                        <p className="text-gray-900 font-medium">
+                                            {product.minimumStock} {product.unitOfMeasure}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Maximum Stock</label>
+                                        <p className="text-gray-900 font-medium">
+                                            {product.maximumStock} {product.unitOfMeasure}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Stock Level Indicator */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Stock Level</label>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className={`h-2 rounded-full ${
+                                                stockInfo?.color === 'destructive' ? 'bg-red-500' :
+                                                    stockInfo?.color === 'warning' ? 'bg-yellow-500' :
+                                                        'bg-green-500'
+                                            }`}
+                                            style={{
+                                                width: `${Math.min(100, Math.max(0, (product.currentStock / Math.max(product.maximumStock, 1)) * 100))}%`
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>0</span>
+                                        <span>Min: {product.minimumStock}</span>
+                                        <span>Max: {product.maximumStock}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pricing Information */}
                         <Card>
                             <CardHeader>
                                 <h3 className="text-lg font-medium flex items-center gap-2">
@@ -112,220 +231,110 @@ export const ProductViewModal: React.FC<ProductViewModalProps> = ({
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Unit Price</p>
-                                        <p className="text-xl font-bold text-green-600">
-                                            {formatCurrency(product.unitPrice)}
+                                    <div className="p-4 bg-blue-50 rounded-lg">
+                                        <p className="text-sm text-blue-600 mb-1">Cost Price</p>
+                                        <p className="text-xl font-bold text-blue-900">
+                                            {formatCurrency(product.costPrice)}
                                         </p>
                                     </div>
-                                    {product.costPrice && (
-                                        <div>
-                                            <p className="text-sm text-gray-600">Cost Price</p>
-                                            <p className="text-lg font-medium text-gray-900">
-                                                {formatCurrency(product.costPrice)}
-                                            </p>
-                                        </div>
-                                    )}
+                                    <div className="p-4 bg-green-50 rounded-lg">
+                                        <p className="text-sm text-green-600 mb-1">Selling Price</p>
+                                        <p className="text-xl font-bold text-green-900">
+                                            {formatCurrency(product.sellingPrice)}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                {profitMargin && (
-                                    <div className="pt-3 border-t border-gray-200">
-                                        <p className="text-sm text-gray-600">Profit Margin</p>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-lg font-medium text-gray-900">{profitMargin}%</p>
-                                            <Badge variant={parseFloat(profitMargin) > 20 ? 'success' : parseFloat(profitMargin) > 10 ? 'warning' : 'error'}>
-                                                {parseFloat(profitMargin) > 20 ? 'Excellent' : parseFloat(profitMargin) > 10 ? 'Good' : 'Low'}
-                                            </Badge>
+                                <div className="p-4 bg-purple-50 rounded-lg">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-purple-600 mb-1">Markup Percentage</p>
+                                            <p className="text-xl font-bold text-purple-900">
+                                                {markupPercentage.toFixed(2)}%
+                                            </p>
                                         </div>
+                                        <TrendingUp className="h-8 w-8 text-purple-400" />
                                     </div>
-                                )}
+                                </div>
 
-                                <div className="pt-3 border-t border-gray-200">
-                                    <p className="text-sm text-gray-600">Inventory Value</p>
+                                <div className="p-4 bg-gray-50 rounded-lg">
+                                    <p className="text-sm text-gray-600 mb-1">Profit per Unit</p>
                                     <p className="text-lg font-medium text-gray-900">
-                                        {formatCurrency(product.unitPrice * product.stockLevel)}
+                                        {formatCurrency(product.sellingPrice - product.costPrice)}
                                     </p>
-                                    <p className="text-xs text-gray-500">
-                                        Based on {product.stockLevel} units at {formatCurrency(product.unitPrice)} each
+                                </div>
+
+                                <div className="p-4 bg-orange-50 rounded-lg">
+                                    <p className="text-sm text-orange-600 mb-1">Total Stock Value (Cost)</p>
+                                    <p className="text-lg font-medium text-orange-900">
+                                        {formatCurrency(product.currentStock * product.costPrice)}
                                     </p>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Stock Information */}
+                        {/* Additional Information */}
                         <Card>
                             <CardHeader>
                                 <h3 className="text-lg font-medium flex items-center gap-2">
-                                    <BarChart3 className="h-5 w-5" />
-                                    Stock Information
+                                    <Calendar className="h-5 w-5" />
+                                    Additional Information
                                 </h3>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Current Stock</p>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-2xl font-bold text-gray-900">{product.stockLevel}</p>
-                                            {stockStatus && (
-                                                <Badge variant={
-                                                    stockStatus.level === 'out' ? 'error' :
-                                                        stockStatus.level === 'low' ? 'warning' : 'success'
-                                                }>
-                                                    {stockStatus.label}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-600">Minimum Level</p>
-                                        <p className="text-2xl font-bold text-orange-600">{product.minStockLevel}</p>
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Created Date</label>
+                                    <p className="text-gray-900">
+                                        {new Date(product.createdAt).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </p>
                                 </div>
 
-                                <div className="pt-3 border-t border-gray-200">
-                                    <p className="text-sm text-gray-600">Stock Status</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        {product.stockLevel === 0 ? (
-                                            <AlertTriangle className="h-4 w-4 text-red-600" />
-                                        ) : product.stockLevel <= product.minStockLevel ? (
-                                            <AlertTriangle className="h-4 w-4 text-orange-600" />
-                                        ) : (
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                        )}
-                                        <span className={`text-sm font-medium ${
-                                            product.stockLevel === 0 ? 'text-red-600' :
-                                                product.stockLevel <= product.minStockLevel ? 'text-orange-600' : 'text-green-600'
-                                        }`}>
-                      {product.stockLevel === 0 ? 'Out of Stock' :
-                          product.stockLevel <= product.minStockLevel ? 'Reorder Required' : 'Stock Level Healthy'}
-                    </span>
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Last Updated</label>
+                                    <p className="text-gray-900">
+                                        {new Date(product.updatedAt).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </p>
                                 </div>
 
-                                {product.stockLevel > product.minStockLevel && (
-                                    <div className="pt-3 border-t border-gray-200">
-                                        <p className="text-sm text-gray-600">Days Until Reorder</p>
-                                        <p className="text-lg font-medium text-gray-900">
-                                            {product.stockLevel - product.minStockLevel} units above minimum
-                                        </p>
-                                    </div>
-                                )}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Product ID</label>
+                                    <p className="text-gray-900 font-mono text-sm">{product.productId}</p>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Supplier Information */}
-                    {product.supplierName && (
-                        <Card>
-                            <CardHeader>
-                                <h3 className="text-lg font-medium flex items-center gap-2">
-                                    <Truck className="h-5 w-5" />
-                                    Supplier Information
-                                </h3>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <Truck className="h-5 w-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{product.supplierName}</p>
-                                        <p className="text-sm text-gray-500">Primary Supplier</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Categories and Vehicle Compatibility */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Categories */}
-                        <Card>
-                            <CardHeader>
-                                <h3 className="text-lg font-medium flex items-center gap-2">
-                                    <Tags className="h-5 w-5" />
-                                    Categories ({product.categories.length})
-                                </h3>
-                            </CardHeader>
-                            <CardContent>
-                                {product.categories.length > 0 ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {product.categories.map((category, index) => (
-                                            <Badge key={index} variant="primary">
-                                                {category}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500 text-sm">No categories assigned</p>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Vehicle Compatibility */}
-                        <Card>
-                            <CardHeader>
-                                <h3 className="text-lg font-medium flex items-center gap-2">
-                                    <Car className="h-5 w-5" />
-                                    Vehicle Compatibility ({product.compatibleVehicles.length})
-                                </h3>
-                            </CardHeader>
-                            <CardContent>
-                                {product.compatibleVehicles.length > 0 ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {product.compatibleVehicles.map((vehicle, index) => (
-                                            <Badge key={index} variant="secondary">
-                                                {vehicle}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500 text-sm">No vehicle compatibility set</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Timestamps */}
-                    <Card>
-                        <CardHeader>
-                            <h3 className="text-lg font-medium flex items-center gap-2">
-                                <Calendar className="h-5 w-5" />
-                                Record Information
-                            </h3>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-gray-600">Created</p>
-                                    <p className="font-medium">{formatDate(product.createdAt)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-600">Last Updated</p>
-                                    <p className="font-medium">{formatDate(product.updatedAt)}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Actions */}
-                    <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
                         <Button variant="outline" onClick={onClose}>
                             Close
                         </Button>
-                        <Button onClick={onEdit}>
-                            <Edit className="h-4 w-4 mr-2" />
+                        <Button onClick={onEdit} className="flex items-center gap-2">
+                            <Edit className="h-4 w-4" />
                             Edit Product
                         </Button>
                     </div>
                 </div>
             ) : (
                 <div className="py-8 text-center">
-                    <Package className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Product not found</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                        The product you're looking for doesn't exist or has been deleted.
-                    </p>
+                    <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Product Not Found</h3>
+                    <p className="text-gray-600 mb-4">The requested product could not be found.</p>
+                    <Button onClick={onClose} variant="outline">
+                        Close
+                    </Button>
                 </div>
             )}
         </Modal>

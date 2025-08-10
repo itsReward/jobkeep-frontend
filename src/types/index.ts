@@ -244,16 +244,20 @@ export interface Product {
   productId: string
   productCode: string
   productName: string
-  description?: string
-  unitPrice: number
-  costPrice?: number
-  stockLevel: number
-  minStockLevel: number
-  supplierName?: string
-  supplierId?: string
+  description: string
+  categoryId: string
+  categoryName: string
+  brand: string
+  unitOfMeasure: string
+  currentStock: number
+  minimumStock: number
+  maximumStock: number
+  costPrice: number
+  sellingPrice: number
+  markupPercentage: number
+  supplierId: string
+  supplierName: string
   isActive: boolean
-  categories: string[]
-  compatibleVehicles: string[]
   createdAt: string
   updatedAt: string
 }
@@ -273,12 +277,10 @@ export interface CreateProductDto {
 export interface ProductCategory {
   categoryId: string
   categoryName: string
-  description?: string
-  isActive: boolean
-  productCount: number
+  description: string
   createdAt: string
-  updatedAt: string
 }
+
 
 export interface CreateProductCategoryDto {
   categoryName: string

@@ -1,31 +1,31 @@
-// src/pages/inventory/modals/StockAdjustmentModal.tsx
-import React, { useState } from 'react'
+// src/components/inventory/StockAdjustmentModal.tsx - FIXED VERSION
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { BarChart3, Plus, Minus, RefreshCw, AlertTriangle } from 'lucide-react'
+import { BarChart3, Plus, Minus, RefreshCw, AlertTriangle, Package } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Loading } from '@/components/ui'
-import { Card, CardContent, CardHeader } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 import { productService } from '@/services/api/inventory'
 import { Product, StockAdjustment } from '@/types'
-import { formatCurrency } from '@/utils/format'
-import { useAuth } from '@/components/providers/AuthProvider'
+import { getStockStatusInfo } from '@/utils/productHelpers'
 
 const schema = yup.object({
-    adjustmentType: yup.string().oneOf(['IN', 'OUT', 'ADJUSTMENT']).required('Adjustment type is required'),
-    quantity: yup.number().min(1, 'Quantity must be at least 1').required('Quantity is required'),
+    adjustmentQuantity: yup.number()
+        .required('Adjustment quantity is required')
+        .test('positive', 'Quantity must be greater than 0', (value) => Math.abs(value || 0) > 0),
     reason: yup.string().required('Reason is required'),
     notes: yup.string(),
 })
 
 interface StockAdjustmentFormData {
-    adjustmentType: 'IN' | 'OUT' | 'ADJUSTMENT'
-    quantity: number
+    adjustmentQuantity: number
     reason: string
     notes?: string
 }
@@ -33,43 +33,19 @@ interface StockAdjustmentFormData {
 interface StockAdjustmentModalProps {
     isOpen: boolean
     onClose: () => void
+    onSuccess: () => void
     product: Product | null
-}
-
-const adjustmentReasons = {
-    IN: [
-        'Purchase/Delivery',
-        'Return from Customer',
-        'Transfer from Another Location',
-        'Found Inventory',
-        'Vendor Return',
-        'Other',
-    ],
-    OUT: [
-        'Sale/Job Card Usage',
-        'Damaged/Defective',
-        'Lost/Stolen',
-        'Transfer to Another Location',
-        'Expired/Obsolete',
-        'Other',
-    ],
-    ADJUSTMENT: [
-        'Physical Count Correction',
-        'System Error Correction',
-        'Initial Stock Setup',
-        'Write-off',
-        'Other',
-    ],
 }
 
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                                                                               isOpen,
                                                                               onClose,
+                                                                              onSuccess,
                                                                               product,
                                                                           }) => {
     const queryClient = useQueryClient()
-    const { user } = useAuth()
-    const [selectedType, setSelectedType] = useState<'IN' | 'OUT' | 'ADJUSTMENT'>('IN')
+    const [adjustmentType, setAdjustmentType] = useState<'IN' | 'OUT' | 'ADJUSTMENT'>('ADJUSTMENT')
+    const [previewStock, setPreviewStock] = useState(0)
 
     const {
         register,
@@ -80,25 +56,69 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
         setValue,
     } = useForm<StockAdjustmentFormData>({
         resolver: yupResolver(schema),
-        defaultValues: {
-            adjustmentType: 'IN',
-            quantity: 1,
-            reason: '',
-            notes: '',
-        },
     })
 
-    const watchedQuantity = watch('quantity')
-    const watchedType = watch('adjustmentType')
+    const adjustmentQuantity = watch('adjustmentQuantity')
+
+    // Update preview stock when quantity changes
+    useEffect(() => {
+        if (product && adjustmentQuantity !== undefined) {
+            let newStock: number
+            switch (adjustmentType) {
+                case 'IN':
+                    newStock = product.currentStock + Math.abs(adjustmentQuantity)
+                    break
+                case 'OUT':
+                    newStock = Math.max(0, product.currentStock - Math.abs(adjustmentQuantity))
+                    break
+                case 'ADJUSTMENT':
+                    newStock = Math.max(0, adjustmentQuantity)
+                    break
+                default:
+                    newStock = product.currentStock
+            }
+            setPreviewStock(newStock)
+        }
+    }, [product, adjustmentQuantity, adjustmentType])
+
+    // Reset form when modal opens
+    useEffect(() => {
+        if (isOpen && product) {
+            reset({
+                adjustmentQuantity: 0,
+                reason: '',
+                notes: '',
+            })
+            setAdjustmentType('ADJUSTMENT')
+            setPreviewStock(product.currentStock)
+        }
+    }, [isOpen, product, reset])
+
+    // Handle adjustment type change
+    const handleTypeChange = (type: 'IN' | 'OUT' | 'ADJUSTMENT') => {
+        setAdjustmentType(type)
+        setValue('adjustmentQuantity', 0)
+
+        // Set default reasons
+        switch (type) {
+            case 'IN':
+                setValue('reason', 'Stock received from supplier')
+                break
+            case 'OUT':
+                setValue('reason', 'Stock used or damaged')
+                break
+            case 'ADJUSTMENT':
+                setValue('reason', 'Stock count adjustment')
+                break
+        }
+    }
 
     // Stock adjustment mutation
     const adjustmentMutation = useMutation({
-        mutationFn: (data: StockAdjustment) => productService.adjustStock(data),
+        mutationFn: (adjustment: StockAdjustment) => productService.adjustStock(adjustment),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['products'] })
-            toast.success('Stock adjustment completed successfully!')
-            onClose()
-            reset()
+            onSuccess()
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || 'Failed to adjust stock')
@@ -106,83 +126,71 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
     })
 
     const onSubmit = (data: StockAdjustmentFormData) => {
-        if (!product || !user) return
+        if (!product) return
+
+        let finalQuantity: number
+        switch (adjustmentType) {
+            case 'IN':
+                finalQuantity = Math.abs(data.adjustmentQuantity)
+                break
+            case 'OUT':
+                finalQuantity = -Math.abs(data.adjustmentQuantity)
+                break
+            case 'ADJUSTMENT':
+                finalQuantity = data.adjustmentQuantity - product.currentStock
+                break
+            default:
+                finalQuantity = 0
+        }
 
         const adjustment: StockAdjustment = {
             productId: product.productId,
-            adjustmentType: data.adjustmentType,
-            quantity: data.quantity,
+            adjustmentQuantity: finalQuantity,
             reason: data.reason,
             notes: data.notes,
-            adjustedBy: user.username,
-            adjustmentDate: new Date().toISOString(),
         }
 
         adjustmentMutation.mutate(adjustment)
     }
 
-    const handleTypeChange = (type: 'IN' | 'OUT' | 'ADJUSTMENT') => {
-        setSelectedType(type)
-        setValue('adjustmentType', type)
-        setValue('reason', '') // Reset reason when type changes
-    }
-
-    const calculateNewStock = () => {
-        if (!product || !watchedQuantity) return product?.stockLevel || 0
-
-        switch (watchedType) {
-            case 'IN':
-                return product.stockLevel + watchedQuantity
-            case 'OUT':
-                return Math.max(0, product.stockLevel - watchedQuantity)
-            case 'ADJUSTMENT':
-                return watchedQuantity
-            default:
-                return product.stockLevel
-        }
-    }
-
-    const getStockWarning = () => {
-        const newStock = calculateNewStock()
-        if (!product) return null
-
-        if (newStock === 0) {
-            return { type: 'error', message: 'This will result in zero stock' }
-        } else if (newStock < product.minStockLevel) {
-            return { type: 'warning', message: 'This will result in stock below minimum level' }
-        } else if (watchedType === 'OUT' && watchedQuantity > product.stockLevel) {
-            return { type: 'error', message: 'Cannot remove more stock than available' }
-        }
-        return null
-    }
-
-    const isLoading = adjustmentMutation.isPending
-
     if (!product) return null
 
-    const stockWarning = getStockWarning()
-    const newStockLevel = calculateNewStock()
+    const currentStockInfo = getStockStatusInfo(product)
+    const previewStockInfo = previewStock !== undefined ? getStockStatusInfo({
+        ...product,
+        currentStock: previewStock
+    }) : null
+
+    const isLoading = adjustmentMutation.isPending
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Adjust Stock - ${product.productName}`}
+            title="Stock Adjustment"
             size="lg"
         >
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                {/* Product Info */}
+                {/* Product Information */}
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-medium text-gray-900">{product.productName}</h3>
-                                <p className="text-sm text-gray-500">Code: {product.productCode}</p>
+                            <div className="flex items-center gap-3">
+                                <Package className="h-8 w-8 text-blue-600" />
+                                <div>
+                                    <h3 className="font-medium text-gray-900">{product.productName}</h3>
+                                    <p className="text-sm text-gray-500">Code: {product.productCode}</p>
+                                </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-gray-600">Current Stock</p>
-                                <p className="text-xl font-bold">{product.stockLevel}</p>
-                                <p className="text-xs text-gray-500">Min: {product.minStockLevel}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-xl font-bold">{product.currentStock} {product.unitOfMeasure}</p>
+                                    <Badge variant={currentStockInfo.color}>
+                                        {currentStockInfo.label}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-gray-500">Min: {product.minimumStock} | Max: {product.maximumStock}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -198,7 +206,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                             type="button"
                             onClick={() => handleTypeChange('IN')}
                             className={`p-4 border rounded-lg text-center transition-colors ${
-                                selectedType === 'IN'
+                                adjustmentType === 'IN'
                                     ? 'border-green-500 bg-green-50 text-green-700'
                                     : 'border-gray-300 hover:border-gray-400'
                             }`}
@@ -212,7 +220,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                             type="button"
                             onClick={() => handleTypeChange('OUT')}
                             className={`p-4 border rounded-lg text-center transition-colors ${
-                                selectedType === 'OUT'
+                                adjustmentType === 'OUT'
                                     ? 'border-red-500 bg-red-50 text-red-700'
                                     : 'border-gray-300 hover:border-gray-400'
                             }`}
@@ -226,158 +234,149 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
                             type="button"
                             onClick={() => handleTypeChange('ADJUSTMENT')}
                             className={`p-4 border rounded-lg text-center transition-colors ${
-                                selectedType === 'ADJUSTMENT'
+                                adjustmentType === 'ADJUSTMENT'
                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                                     : 'border-gray-300 hover:border-gray-400'
                             }`}
                         >
                             <RefreshCw className="h-6 w-6 mx-auto mb-2" />
-                            <div className="font-medium">Set Level</div>
-                            <div className="text-xs text-gray-500">Set exact amount</div>
+                            <div className="font-medium">Set Count</div>
+                            <div className="text-xs text-gray-500">Set exact count</div>
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Quantity */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {watchedType === 'ADJUSTMENT' ? 'New Stock Level' : 'Quantity'}
-                        </label>
-                        <Input
-                            {...register('quantity', { valueAsNumber: true })}
-                            type="number"
-                            min={watchedType === 'ADJUSTMENT' ? 0 : 1}
-                            max={watchedType === 'OUT' ? product.stockLevel : undefined}
-                            placeholder={watchedType === 'ADJUSTMENT' ? 'Enter new stock level' : 'Enter quantity'}
-                            error={errors.quantity?.message}
-                        />
-                    </div>
+                {/* Quantity Input */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {adjustmentType === 'ADJUSTMENT' ? 'New Stock Count' : 'Quantity'} *
+                    </label>
+                    <Input
+                        {...register('adjustmentQuantity', { valueAsNumber: true })}
+                        type="number"
+                        min={adjustmentType === 'ADJUSTMENT' ? 0 : 1}
+                        step="1"
+                        placeholder={adjustmentType === 'ADJUSTMENT' ? 'Enter new stock count' : 'Enter quantity'}
+                        error={errors.adjustmentQuantity?.message}
+                    />
+                    {adjustmentType === 'OUT' && adjustmentQuantity > product.currentStock && (
+                        <div className="mt-2 flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-sm">This will result in negative stock</span>
+                        </div>
+                    )}
+                </div>
 
-                    {/* Reason */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Reason *
-                        </label>
-                        <select
-                            {...register('reason')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                        >
-                            <option value="">Select a reason</option>
-                            {adjustmentReasons[watchedType].map((reason) => (
-                                <option key={reason} value={reason}>
-                                    {reason}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.reason && (
-                            <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>
+                {/* Stock Preview */}
+                {previewStock !== product.currentStock && (
+                    <Card className="bg-blue-50 border-blue-200">
+                        <CardContent className="p-4">
+                            <h4 className="font-medium text-blue-900 mb-2">Stock Preview</h4>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-blue-700">Current: {product.currentStock} {product.unitOfMeasure}</p>
+                                    <p className="text-sm text-blue-700">
+                                        After adjustment: {previewStock} {product.unitOfMeasure}
+                                    </p>
+                                    <p className="text-sm text-blue-700">
+                                        Change: {previewStock > product.currentStock ? '+' : ''}{previewStock - product.currentStock} {product.unitOfMeasure}
+                                    </p>
+                                </div>
+                                {previewStockInfo && (
+                                    <Badge variant={previewStockInfo.color}>
+                                        {previewStockInfo.label}
+                                    </Badge>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Reason */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reason *
+                    </label>
+                    <select
+                        {...register('reason')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    >
+                        <option value="">Select a reason</option>
+                        {adjustmentType === 'IN' && (
+                            <>
+                                <option value="Stock received from supplier">Stock received from supplier</option>
+                                <option value="Return from customer">Return from customer</option>
+                                <option value="Production completed">Production completed</option>
+                                <option value="Transfer from another location">Transfer from another location</option>
+                                <option value="Initial stock entry">Initial stock entry</option>
+                                <option value="Other">Other</option>
+                            </>
                         )}
-                    </div>
+                        {adjustmentType === 'OUT' && (
+                            <>
+                                <option value="Stock used or consumed">Stock used or consumed</option>
+                                <option value="Damaged or defective">Damaged or defective</option>
+                                <option value="Sold to customer">Sold to customer</option>
+                                <option value="Transfer to another location">Transfer to another location</option>
+                                <option value="Expired or obsolete">Expired or obsolete</option>
+                                <option value="Theft or loss">Theft or loss</option>
+                                <option value="Other">Other</option>
+                            </>
+                        )}
+                        {adjustmentType === 'ADJUSTMENT' && (
+                            <>
+                                <option value="Physical count adjustment">Physical count adjustment</option>
+                                <option value="System correction">System correction</option>
+                                <option value="Inventory reconciliation">Inventory reconciliation</option>
+                                <option value="Audit adjustment">Audit adjustment</option>
+                                <option value="Other">Other</option>
+                            </>
+                        )}
+                    </select>
+                    {errors.reason && (
+                        <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>
+                    )}
                 </div>
 
                 {/* Notes */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Additional Notes
+                        Notes (Optional)
                     </label>
                     <textarea
                         {...register('notes')}
-                        rows={3}
+                        placeholder="Enter additional notes or comments"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="Optional notes about this adjustment..."
+                        rows={3}
                     />
                 </div>
 
-                {/* Stock Preview */}
-                <Card>
-                    <CardHeader>
-                        <h3 className="text-lg font-medium flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5" />
-                            Stock Level Preview
-                        </h3>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <p className="text-sm text-gray-600">Current</p>
-                                <p className="text-xl font-bold text-gray-900">{product.stockLevel}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">
-                                    {watchedType === 'IN' ? 'Adding' : watchedType === 'OUT' ? 'Removing' : 'Setting to'}
-                                </p>
-                                <p className={`text-xl font-bold ${
-                                    watchedType === 'IN' ? 'text-green-600' :
-                                        watchedType === 'OUT' ? 'text-red-600' : 'text-blue-600'
-                                }`}>
-                                    {watchedType === 'ADJUSTMENT' ? watchedQuantity || 0 : `${watchedType === 'OUT' ? '-' : '+'}${watchedQuantity || 0}`}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">New Level</p>
-                                <p className={`text-xl font-bold ${
-                                    newStockLevel === 0 ? 'text-red-600' :
-                                        newStockLevel < product.minStockLevel ? 'text-orange-600' : 'text-green-600'
-                                }`}>
-                                    {newStockLevel}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Value Impact */}
-                        {product.costPrice && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <p className="text-sm text-gray-600 text-center">
-                                    Inventory Value Impact: {' '}
-                                    <span className={`font-medium ${
-                                        watchedType === 'IN' ? 'text-green-600' :
-                                            watchedType === 'OUT' ? 'text-red-600' : 'text-blue-600'
-                                    }`}>
-                    {watchedType === 'ADJUSTMENT'
-                        ? formatCurrency((newStockLevel - product.stockLevel) * product.costPrice)
-                        : `${watchedType === 'OUT' ? '-' : '+'}${formatCurrency((watchedQuantity || 0) * product.costPrice)}`
-                    }
-                  </span>
-                                </p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Warning Messages */}
-                {stockWarning && (
-                    <div className={`rounded-lg p-4 ${
-                        stockWarning.type === 'error'
-                            ? 'bg-red-50 border border-red-200'
-                            : 'bg-orange-50 border border-orange-200'
-                    }`}>
-                        <div className="flex items-center gap-2">
-                            <AlertTriangle className={`h-5 w-5 ${
-                                stockWarning.type === 'error' ? 'text-red-600' : 'text-orange-600'
-                            }`} />
-                            <p className={`font-medium ${
-                                stockWarning.type === 'error' ? 'text-red-800' : 'text-orange-800'
-                            }`}>
-                                {stockWarning.message}
-                            </p>
-                        </div>
-                    </div>
-                )}
-
                 {/* Form Actions */}
-                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
                     <Button type="button" variant="outline" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button
-                        type="submit"
-                        disabled={isLoading || (stockWarning?.type === 'error')}
-                    >
+                    <Button type="submit" disabled={isLoading}>
                         {isLoading && <Loading size="sm" className="mr-2" />}
                         Apply Adjustment
                     </Button>
                 </div>
+
+                {/* Warning for negative stock */}
+                {adjustmentType === 'OUT' && adjustmentQuantity > product.currentStock && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                            <div>
+                                <h4 className="font-medium text-amber-800">Warning: Negative Stock</h4>
+                                <p className="text-sm text-amber-700 mt-1">
+                                    This adjustment will result in negative stock ({previewStock} {product.unitOfMeasure}).
+                                    Please verify this is correct before proceeding.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </form>
         </Modal>
     )
