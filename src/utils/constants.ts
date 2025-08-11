@@ -85,3 +85,29 @@ export const PRIORITY_COLORS = {
   [PRIORITIES.HIGH]: 'warning',
   [PRIORITIES.URGENT]: 'error',
 } as const
+
+
+
+//invoice constants
+export const DEFAULT_TAX_RATE = 15 // 15% for Zimbabwe
+export const DEFAULT_PAYMENT_TERMS = 'Net 30'
+export const INVOICE_NUMBER_PREFIX = 'INV'
+
+export const INVOICE_EXPORT_FORMATS = {
+  PDF: 'pdf',
+  EXCEL: 'excel',
+  CSV: 'csv'
+} as const
+
+export const PAYMENT_STATUSES = {
+  PENDING: 'PENDING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  REFUNDED: 'REFUNDED'
+} as const
+
+export const INVOICE_TEMPLATES = {
+  STANDARD: 'standard',
+  DETAILED: 'detailed',
+  SIMPLE: 'simple'
+} as const

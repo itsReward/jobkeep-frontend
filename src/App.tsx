@@ -16,6 +16,7 @@ import {
 import AppointmentList from "@/pages/appointments/AppointmentList.tsx";
 import {ProductList} from "@/pages/inventory/ProductList.tsx";
 import {ApiDebugTrigger} from "@/components/debug/ApiDebugPanel.tsx";
+import InvoiceList from "@/pages/invoices/InvoiceList.tsx";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -183,10 +184,7 @@ function App() {
                                     path="/invoices"
                                     element={
                                         <ProtectedRoute allowedRoles={['ADMIN', 'Service Advisor']}>
-                                            <div className="p-6">
-                                                <h1 className="text-2xl font-bold">Invoices</h1>
-                                                <p className="text-gray-600">Coming soon...</p>
-                                            </div>
+                                            <InvoiceList/>
                                         </ProtectedRoute>
                                     }
                                 />
