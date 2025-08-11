@@ -163,7 +163,7 @@ class APILogger {
                 console.log('📥 Error Response:', error.response.data)
             }
             if (error.stack) {
-                console.log('📚 Stack Trace:', error.stack)
+                //console.log('📚 Stack Trace:', error.stack)
             }
             console.groupEnd()
         }

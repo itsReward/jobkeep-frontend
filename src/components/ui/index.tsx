@@ -1,3 +1,4 @@
+// src/components/ui/index.tsx
 import React from 'react'
 
 // UI Components Exports
@@ -7,6 +8,18 @@ export { Card, CardContent, CardHeader, CardFooter } from './Card'
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './Table'
 export { Badge } from './Badge'
 export { Modal } from './Modal'
+
+// Dropdown Components
+export {
+    Dropdown,
+    DropdownContent,
+    DropdownItem,
+    DropdownTrigger,
+    DropdownSeparator,
+    DropdownLabel,
+    Select,
+    SelectOption
+} from './Dropdown'
 
 // Loading Component
 export const Loading: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }) => {

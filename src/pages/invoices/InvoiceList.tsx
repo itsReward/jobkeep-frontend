@@ -1,464 +1,597 @@
-// src/components/invoices/InvoiceList.tsx
-
-import React, { useEffect, useState } from 'react'
+// src/pages/invoices/InvoiceList.tsx
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-    Box,
-    Button,
+    useInvoices,
+    useDeleteInvoice,
+    useUpdateInvoiceStatus,
+    useSendInvoiceToClient,
+    useEmailInvoiceToClient,
+    useDownloadInvoicePdf,
+    useCheckOverdueInvoices
+} from '@/hooks/useInvoices'
+import { InvoiceListFilters, Invoice, InvoiceStatus, INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from '@/types/invoice'
+import { formatDate, formatCurrency } from '@/utils/formatters'
+import {
+    AlertTriangle,
+    Calendar,
+    CheckCircle,
+    Clock,
+    DollarSign,
+    Download,
+    Edit,
+    Eye,
+    Filter,
+    Mail,
+    MoreHorizontal,
+    Plus,
+    RefreshCw,
+    Search,
+    Send,
+    Trash2,
+    X
+} from 'lucide-react'
+import {
     Card,
     CardContent,
-    Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
-    Chip,
-    IconButton,
-    Menu,
-    MenuItem,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    Grid,
-    Pagination,
-    Tooltip,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Alert
-} from '@mui/material'
-import {
-    Add as AddIcon,
-    MoreVert as MoreVertIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon,
-    Send as SendIcon,
-    Download as DownloadIcon,
-    Payment as PaymentIcon,
-    Search as SearchIcon,
-    FilterList as FilterIcon,
-} from '@mui/icons-material'
-import { formatCurrency, formatDate } from '@/utils/formatters'
-import useInvoiceStore from '@/stores/invoiceStore'
-import { useClients } from '@/hooks/useClients'
-import {
-    Invoice,
-    InvoiceStatus,
-    INVOICE_STATUS_LABELS,
-    INVOICE_STATUS_COLORS,
-    InvoiceListFilters
-} from '@/types'
-import LoadingSpinner from '@/components/common/LoadingSpinner'
+    CardHeader,
+    Button,
+    Badge,
+    Input,
+    Loading,
+    Dropdown,
+    DropdownContent,
+    DropdownItem,
+    DropdownTrigger
+} from '@/components/ui'
+import InvoiceView  from '@/components/invoices/InvoiceView'
+import InvoiceForm  from '@/components/forms/InvoiceForm'
 
 const InvoiceList: React.FC = () => {
     const navigate = useNavigate()
-    const {
-        invoices,
-        loading,
-        error,
-        pagination,
-        filters,
-        fetchInvoices,
-        deleteInvoice,
-        sendInvoiceToClient,
-        downloadInvoicePdf,
-        setFilters,
-        clearFilters,
-        clearError
-    } = useInvoiceStore()
-
-    const { clients = [], isLoading: clientsLoading } = useClients()
-
-    // Local state
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
-    const [deleteDialog, setDeleteDialog] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+    const [filters, setFilters] = useState<InvoiceListFilters>({})
     const [showFilters, setShowFilters] = useState(false)
-    const [localFilters, setLocalFilters] = useState<InvoiceListFilters>(filters)
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [showInvoiceForm, setShowInvoiceForm] = useState(false)
+    const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null)
+    const [viewingInvoiceId, setViewingInvoiceId] = useState<string | null>(null)
+    const [page, setPage] = useState(0)
+    const [pageSize, setPageSize] = useState(20)
 
-    // Load data on component mount
-    useEffect(() => {
-        fetchInvoices()
-        // Clients are automatically loaded by the useClients hook
-    }, [])
+    // Combine search term with filters
+    const queryParams = useMemo(() => ({
+        page,
+        size: pageSize,
+        filters: {
+            ...filters,
+            search: searchTerm || undefined
+        }
+    }), [page, pageSize, filters, searchTerm])
 
-    // Handle menu actions
-    const handleMenuClick = (event: React.MouseEvent<HTMLElement>, invoice: Invoice) => {
-        setAnchorEl(event.currentTarget)
+    // Fetch invoices
+    const { data: invoicesResponse, isLoading, error, refetch } = useInvoices(queryParams)
+    const invoices = invoicesResponse?.content || []
+    const totalPages = invoicesResponse?.totalPages || 0
+    const totalElements = invoicesResponse?.totalElements || 0
+
+    // Mutations
+    const deleteInvoice = useDeleteInvoice()
+    const updateInvoiceStatus = useUpdateInvoiceStatus()
+    const sendInvoiceToClient = useSendInvoiceToClient()
+    const emailInvoiceToClient = useEmailInvoiceToClient()
+    const downloadInvoicePdf = useDownloadInvoicePdf()
+    const checkOverdueInvoices = useCheckOverdueInvoices()
+
+    // Filter invoices based on search term (client-side filtering for better UX)
+    const filteredInvoices = useMemo(() => {
+        if (!searchTerm) return invoices
+
+        const term = searchTerm.toLowerCase()
+        return invoices.filter(invoice =>
+            invoice.invoiceNumber.toLowerCase().includes(term) ||
+            invoice.clientName.toLowerCase().includes(term) ||
+            invoice.vehicleInfo?.toLowerCase().includes(term) ||
+            invoice.status.toLowerCase().includes(term) ||
+            invoice.totalAmount.toString().includes(term)
+        )
+    }, [invoices, searchTerm])
+
+    // Handlers
+    const handleCreateInvoice = () => {
+        setEditingInvoice(null)
+        setShowInvoiceForm(true)
+    }
+
+    const handleEditInvoice = (invoice: Invoice) => {
+        setEditingInvoice(invoice)
+        setShowInvoiceForm(true)
+    }
+
+    const handleDeleteInvoice = (invoice: Invoice) => {
         setSelectedInvoice(invoice)
+        setShowDeleteModal(true)
     }
 
-    const handleMenuClose = () => {
-        setAnchorEl(null)
-        setSelectedInvoice(null)
-    }
-
-    // Handle actions
-    const handleEdit = () => {
+    const confirmDelete = () => {
         if (selectedInvoice) {
-            navigate(`/invoices/edit/${selectedInvoice.invoiceId}`)
-        }
-        handleMenuClose()
-    }
-
-    const handleView = (invoice: Invoice) => {
-        navigate(`/invoices/view/${invoice.invoiceId}`)
-    }
-
-    const handleDelete = () => {
-        setDeleteDialog(true)
-        handleMenuClose()
-    }
-
-    const confirmDelete = async () => {
-        if (selectedInvoice) {
-            try {
-                await deleteInvoice(selectedInvoice.invoiceId)
-                setDeleteDialog(false)
-                setSelectedInvoice(null)
-            } catch (error) {
-                console.error('Failed to delete invoice:', error)
-            }
+            deleteInvoice.mutate(selectedInvoice.invoiceId)
+            setShowDeleteModal(false)
+            setSelectedInvoice(null)
         }
     }
 
-    const handleSend = async () => {
-        if (selectedInvoice) {
-            try {
-                await sendInvoiceToClient(selectedInvoice.invoiceId)
-            } catch (error) {
-                console.error('Failed to send invoice:', error)
-            }
+    const handleStatusChange = (invoiceId: string, status: InvoiceStatus) => {
+        updateInvoiceStatus.mutate({
+            id: invoiceId,
+            statusUpdate: { status }
+        })
+    }
+
+    const handleSendToClient = (invoiceId: string) => {
+        sendInvoiceToClient.mutate(invoiceId)
+    }
+
+    const handleEmailToClient = (invoiceId: string) => {
+        emailInvoiceToClient.mutate({ id: invoiceId })
+    }
+
+    const handleDownloadPdf = (invoiceId: string) => {
+        downloadInvoicePdf.mutate(invoiceId)
+    }
+
+    const handleViewInvoice = (invoiceId: string) => {
+        setViewingInvoiceId(invoiceId)
+    }
+
+    const handleCheckOverdue = () => {
+        checkOverdueInvoices.mutate()
+    }
+
+    const handleFilterChange = (key: keyof InvoiceListFilters, value: any) => {
+        setFilters(prev => ({
+            ...prev,
+            [key]: value
+        }))
+        setPage(0) // Reset to first page when filters change
+    }
+
+    const clearFilters = () => {
+        setFilters({})
+        setSearchTerm('')
+        setPage(0)
+    }
+
+    const getStatusIcon = (status: InvoiceStatus) => {
+        switch (status) {
+            case InvoiceStatus.DRAFT:
+                return <Edit className="h-4 w-4" />
+            case InvoiceStatus.SENT:
+                return <Send className="h-4 w-4" />
+            case InvoiceStatus.PAID:
+                return <CheckCircle className="h-4 w-4" />
+            case InvoiceStatus.OVERDUE:
+                return <AlertTriangle className="h-4 w-4" />
+            case InvoiceStatus.CANCELLED:
+                return <X className="h-4 w-4" />
+            default:
+                return <Clock className="h-4 w-4" />
         }
-        handleMenuClose()
     }
 
-    const handleDownload = async () => {
-        if (selectedInvoice) {
-            try {
-                await downloadInvoicePdf(selectedInvoice.invoiceId)
-            } catch (error) {
-                console.error('Failed to download invoice:', error)
-            }
-        }
-        handleMenuClose()
+    if (viewingInvoiceId) {
+        return (
+            <InvoiceView
+                invoiceId={viewingInvoiceId}
+                onClose={() => setViewingInvoiceId(null)}
+                onEdit={(invoice) => {
+                    setViewingInvoiceId(null)
+                    handleEditInvoice(invoice)
+                }}
+            />
+        )
     }
 
-    const handleAddPayment = () => {
-        if (selectedInvoice) {
-            navigate(`/invoices/payment/${selectedInvoice.invoiceId}`)
-        }
-        handleMenuClose()
-    }
-
-    // Handle pagination
-    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-        fetchInvoices({ page: value - 1 })
-    }
-
-    // Handle filters
-    const applyFilters = () => {
-        setFilters(localFilters)
-        fetchInvoices({ page: 0, filters: localFilters })
-        setShowFilters(false)
-    }
-
-    const clearAllFilters = () => {
-        setLocalFilters({})
-        clearFilters()
-        fetchInvoices({ page: 0 })
-        setShowFilters(false)
-    }
-
-    const getStatusColor = (status: InvoiceStatus) => {
-        const colorMap = {
-            [InvoiceStatus.DRAFT]: 'default',
-            [InvoiceStatus.SENT]: 'warning',
-            [InvoiceStatus.PAID]: 'success',
-            [InvoiceStatus.OVERDUE]: 'error',
-            [InvoiceStatus.CANCELLED]: 'secondary'
-        } as const
-        return colorMap[status] || 'default'
-    }
-
-    if (loading && invoices.length === 0) {
-        return <LoadingSpinner />
+    if (showInvoiceForm) {
+        return (
+            <InvoiceForm
+                invoice={editingInvoice}
+                onClose={() => {
+                    setShowInvoiceForm(false)
+                    setEditingInvoice(null)
+                }}
+                onSuccess={() => {
+                    setShowInvoiceForm(false)
+                    setEditingInvoice(null)
+                    refetch()
+                }}
+            />
+        )
     }
 
     return (
-        <Box sx={{ p: 3 }}>
+        <div className="space-y-6">
             {/* Header */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h4" component="h1">
-                    Invoices
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
+                    <p className="text-gray-600 mt-1">
+                        Manage billing documents and track payments
+                    </p>
+                </div>
+                <div className="flex gap-2">
                     <Button
-                        variant="outlined"
-                        startIcon={<FilterIcon />}
-                        onClick={() => setShowFilters(!showFilters)}
+                        variant="outline"
+                        onClick={handleCheckOverdue}
+                        disabled={checkOverdueInvoices.isPending}
                     >
-                        Filters
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Check Overdue
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('/invoices/new')}
-                    >
+                    <Button onClick={handleCreateInvoice}>
+                        <Plus className="h-4 w-4 mr-2" />
                         New Invoice
                     </Button>
-                </Box>
-            </Box>
+                </div>
+            </div>
 
-            {/* Error Alert */}
-            {error && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={clearError}>
-                    {error}
-                </Alert>
-            )}
-
-            {/* Filters Panel */}
-            {showFilters && (
-                <Card sx={{ mb: 3 }}>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            Filter Invoices
-                        </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                    label="Search"
-                                    value={localFilters.search || ''}
-                                    onChange={(e) => setLocalFilters({ ...localFilters, search: e.target.value })}
-                                    placeholder="Invoice number, client name..."
-                                    fullWidth
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Status</InputLabel>
-                                    <Select
-                                        value={localFilters.status || ''}
-                                        onChange={(e) => setLocalFilters({ ...localFilters, status: e.target.value as InvoiceStatus })}
-                                        label="Status"
-                                    >
-                                        <MenuItem value="">All</MenuItem>
-                                        {Object.values(InvoiceStatus).map((status) => (
-                                            <MenuItem key={status} value={status}>
-                                                {INVOICE_STATUS_LABELS[status]}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Client</InputLabel>
-                                    <Select
-                                        value={localFilters.clientId || ''}
-                                        onChange={(e) => setLocalFilters({ ...localFilters, clientId: e.target.value })}
-                                        label="Client"
-                                    >
-                                        <MenuItem value="">All Clients</MenuItem>
-                                        {clients.map((client) => (
-                                            <MenuItem key={client.clientId} value={client.clientId}>
-                                                {client.name} {client.surname}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                    label="From Date"
-                                    type="date"
-                                    value={localFilters.dateFrom || ''}
-                                    onChange={(e) => setLocalFilters({ ...localFilters, dateFrom: e.target.value })}
-                                    InputLabelProps={{ shrink: true }}
-                                    fullWidth
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                    label="To Date"
-                                    type="date"
-                                    value={localFilters.dateTo || ''}
-                                    onChange={(e) => setLocalFilters({ ...localFilters, dateTo: e.target.value })}
-                                    InputLabelProps={{ shrink: true }}
-                                    fullWidth
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                    <Button variant="contained" onClick={applyFilters} size="small">
-                                        Apply
-                                    </Button>
-                                    <Button variant="outlined" onClick={clearAllFilters} size="small">
-                                        Clear
-                                    </Button>
-                                </Box>
-                            </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Invoice Table */}
+            {/* Search and Filters */}
             <Card>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Invoice #</TableCell>
-                                <TableCell>Client</TableCell>
-                                <TableCell>Date</TableCell>
-                                <TableCell>Due Date</TableCell>
-                                <TableCell>Amount</TableCell>
-                                <TableCell>Paid</TableCell>
-                                <TableCell>Balance</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {invoices.map((invoice) => (
-                                <TableRow
-                                    key={invoice.invoiceId}
-                                    hover
-                                    sx={{ cursor: 'pointer' }}
-                                    onClick={() => handleView(invoice)}
-                                >
-                                    <TableCell>
-                                        <Typography variant="body2" fontWeight="medium">
-                                            {invoice.invoiceNumber}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            {invoice.clientName}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            {formatDate(invoice.invoiceDate)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            variant="body2"
-                                            color={new Date(invoice.dueDate) < new Date() && invoice.status !== InvoiceStatus.PAID ? 'error' : 'inherit'}
-                                        >
-                                            {formatDate(invoice.dueDate)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            {formatCurrency(invoice.totalAmount)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            {formatCurrency(invoice.amountPaid)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            variant="body2"
-                                            color={invoice.balanceDue > 0 ? 'error' : 'success'}
-                                            fontWeight="medium"
-                                        >
-                                            {formatCurrency(invoice.balanceDue)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={INVOICE_STATUS_LABELS[invoice.status]}
-                                            color={getStatusColor(invoice.status)}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleMenuClick(e, invoice)
-                                            }}
-                                            size="small"
-                                        >
-                                            <MoreVertIcon />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <CardContent className="pt-6">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Input
+                                    placeholder="Search invoices..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filters
+                        </Button>
+                        {(Object.keys(filters).length > 0 || searchTerm) && (
+                            <Button variant="outline" onClick={clearFilters}>
+                                <X className="h-4 w-4 mr-2" />
+                                Clear
+                            </Button>
+                        )}
+                    </div>
 
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                        <Pagination
-                            count={pagination.totalPages}
-                            page={pagination.page + 1}
-                            onChange={handlePageChange}
-                            color="primary"
-                        />
-                    </Box>
-                )}
+                    {/* Filter Panel */}
+                    {showFilters && (
+                        <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Status
+                                    </label>
+                                    <select
+                                        value={filters.status || ''}
+                                        onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    >
+                                        <option value="">All Statuses</option>
+                                        {Object.values(InvoiceStatus).map((status) => (
+                                            <option key={status} value={status}>
+                                                {INVOICE_STATUS_LABELS[status]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Date From
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={filters.dateFrom || ''}
+                                        onChange={(e) => handleFilterChange('dateFrom', e.target.value || undefined)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Date To
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={filters.dateTo || ''}
+                                        onChange={(e) => handleFilterChange('dateTo', e.target.value || undefined)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Client
+                                    </label>
+                                    <Input
+                                        placeholder="Client name..."
+                                        value={filters.clientId || ''}
+                                        onChange={(e) => handleFilterChange('clientId', e.target.value || undefined)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
             </Card>
 
-            {/* Actions Menu */}
-            <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-            >
-                <MenuItem onClick={handleEdit}>
-                    <EditIcon sx={{ mr: 1 }} />
-                    Edit
-                </MenuItem>
-                <MenuItem onClick={handleSend} disabled={selectedInvoice?.status === InvoiceStatus.PAID}>
-                    <SendIcon sx={{ mr: 1 }} />
-                    Send to Client
-                </MenuItem>
-                <MenuItem onClick={handleDownload}>
-                    <DownloadIcon sx={{ mr: 1 }} />
-                    Download PDF
-                </MenuItem>
-                <MenuItem onClick={handleAddPayment} disabled={selectedInvoice?.status === InvoiceStatus.PAID}>
-                    <PaymentIcon sx={{ mr: 1 }} />
-                    Add Payment
-                </MenuItem>
-                <MenuItem onClick={handleDelete} disabled={selectedInvoice?.status === InvoiceStatus.PAID}>
-                    <DeleteIcon sx={{ mr: 1 }} />
-                    Delete
-                </MenuItem>
-            </Menu>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                    <CardContent className="flex items-center p-6">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <DollarSign className="h-8 w-8 text-green-600" />
+                            </div>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-500">Total Invoices</p>
+                                <p className="text-2xl font-bold text-gray-900">{totalElements}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="flex items-center p-6">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <CheckCircle className="h-8 w-8 text-green-600" />
+                            </div>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-500">Paid</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {filteredInvoices.filter(i => i.status === InvoiceStatus.PAID).length}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="flex items-center p-6">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <Clock className="h-8 w-8 text-yellow-600" />
+                            </div>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-500">Pending</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {filteredInvoices.filter(i => i.status === InvoiceStatus.SENT).length}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="flex items-center p-6">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <AlertTriangle className="h-8 w-8 text-red-600" />
+                            </div>
+                            <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-500">Overdue</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {filteredInvoices.filter(i => i.status === InvoiceStatus.OVERDUE).length}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
-                <DialogTitle>Delete Invoice</DialogTitle>
-                <DialogContent>
-                    <Typography>
-                        Are you sure you want to delete invoice {selectedInvoice?.invoiceNumber}? This action cannot be undone.
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteDialog(false)}>Cancel</Button>
-                    <Button onClick={confirmDelete} color="error" variant="contained">
-                        Delete
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
+            {/* Invoices List */}
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold">
+                            Invoices ({filteredInvoices.length})
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">
+                                Page {page + 1} of {totalPages}
+                            </span>
+                            <div className="flex gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(Math.max(0, page - 1))}
+                                    disabled={page === 0}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                                    disabled={page >= totalPages - 1}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="flex justify-center py-8">
+                            <Loading size="lg" />
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-8">
+                            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                            <p className="text-gray-500">Failed to load invoices</p>
+                            <Button variant="outline" onClick={() => refetch()} className="mt-2">
+                                Try Again
+                            </Button>
+                        </div>
+                    ) : filteredInvoices.length === 0 ? (
+                        <div className="text-center py-8">
+                            <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500 mb-4">
+                                {searchTerm || Object.keys(filters).length > 0
+                                    ? 'No invoices match your search criteria'
+                                    : 'No invoices found'}
+                            </p>
+                            <Button onClick={handleCreateInvoice}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create First Invoice
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {filteredInvoices.map((invoice) => (
+                                <div
+                                    key={invoice.invoiceId}
+                                    className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3">
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        {invoice.invoiceNumber}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        {invoice.clientName}
+                                                    </p>
+                                                </div>
+                                                <Badge
+                                                    variant={INVOICE_STATUS_COLORS[invoice.status]}
+                                                    className="flex items-center gap-1"
+                                                >
+                                                    {getStatusIcon(invoice.status)}
+                                                    {INVOICE_STATUS_LABELS[invoice.status]}
+                                                </Badge>
+                                            </div>
+                                            <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="h-4 w-4" />
+                                                    {formatDate(invoice.invoiceDate)}
+                                                </span>
+                                                {invoice.vehicleInfo && (
+                                                    <span className="flex items-center gap-1">
+                                                        <Car className="h-4 w-4" />
+                                                        {invoice.vehicleInfo}
+                                                    </span>
+                                                )}
+                                                <span className="flex items-center gap-1">
+                                                    <DollarSign className="h-4 w-4" />
+                                                    {formatCurrency(invoice.totalAmount)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleViewInvoice(invoice.invoiceId)}
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleEditInvoice(invoice)}
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Dropdown>
+                                                <DropdownTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownTrigger>
+                                                <DropdownContent align="end">
+                                                    <DropdownItem
+                                                        onClick={() => handleDownloadPdf(invoice.invoiceId)}
+                                                    >
+                                                        <Download className="h-4 w-4 mr-2" />
+                                                        Download PDF
+                                                    </DropdownItem>
+                                                    <DropdownItem
+                                                        onClick={() => handleEmailToClient(invoice.invoiceId)}
+                                                    >
+                                                        <Mail className="h-4 w-4 mr-2" />
+                                                        Email to Client
+                                                    </DropdownItem>
+                                                    <DropdownItem
+                                                        onClick={() => handleSendToClient(invoice.invoiceId)}
+                                                    >
+                                                        <Send className="h-4 w-4 mr-2" />
+                                                        Send to Client
+                                                    </DropdownItem>
+                                                    {invoice.status !== InvoiceStatus.PAID && (
+                                                        <DropdownItem
+                                                            onClick={() => handleStatusChange(invoice.invoiceId, InvoiceStatus.PAID)}
+                                                        >
+                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                            Mark as Paid
+                                                        </DropdownItem>
+                                                    )}
+                                                    {invoice.status !== InvoiceStatus.CANCELLED && (
+                                                        <DropdownItem
+                                                            onClick={() => handleStatusChange(invoice.invoiceId, InvoiceStatus.CANCELLED)}
+                                                        >
+                                                            <X className="h-4 w-4 mr-2" />
+                                                            Cancel Invoice
+                                                        </DropdownItem>
+                                                    )}
+                                                    <DropdownItem
+                                                        onClick={() => handleDeleteInvoice(invoice)}
+                                                        className="text-red-600"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                        Delete
+                                                    </DropdownItem>
+                                                </DropdownContent>
+                                            </Dropdown>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && selectedInvoice && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <Card className="w-full max-w-md">
+                        <CardHeader>
+                            <h3 className="text-lg font-semibold">Delete Invoice</h3>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-gray-600 mb-4">
+                                Are you sure you want to delete invoice {selectedInvoice.invoiceNumber}?
+                                This action cannot be undone.
+                            </p>
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowDeleteModal(false)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={confirmDelete}
+                                    disabled={deleteInvoice.isPending}
+                                >
+                                    {deleteInvoice.isPending ? 'Deleting...' : 'Delete'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+        </div>
     )
 }
 
