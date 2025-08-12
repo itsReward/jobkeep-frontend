@@ -245,7 +245,7 @@ interface DropdownLabelProps {
 
 export const DropdownLabel: React.FC<DropdownLabelProps> = ({ children, className = '' }) => {
     return (
-        <div className={`px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide ${className}`}>
+        <div className={`px-4 py-24 text-xs font-semibold text-gray-500 uppercase tracking-wide ${className}`}>
             {children}
         </div>
     )
