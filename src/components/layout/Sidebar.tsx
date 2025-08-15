@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx
+// src/components/layout/Sidebar.tsx - Updated with Quotations
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import {
@@ -13,7 +13,8 @@ import {
   Settings,
   Wrench,
   ShoppingCart,
-  Package
+  Package,
+  Calculator
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/utils/constants'
@@ -25,19 +26,19 @@ const menuItems = [
     title: 'Dashboard',
     href: ROUTES.DASHBOARD,
     icon: LayoutDashboard,
-    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles can access dashboard
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles can access dashboard
   },
   {
     title: 'Clients',
     href: ROUTES.CLIENTS,
     icon: Users,
-    roles: ['ADMIN', 'Service Advisor'] // Only Admin and Service Advisor can access clients
+    roles: ['ADMIN', 'SERVICE_ADVISOR'] // Only Admin and Service Advisor can access clients
   },
   {
     title: 'Vehicles',
     href: ROUTES.VEHICLES,
     icon: Car,
-    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles except for specific restrictions
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles except for specific restrictions
   },
   {
     title: 'Employees',
@@ -49,19 +50,32 @@ const menuItems = [
     title: 'Job Cards',
     href: ROUTES.JOBCARDS,
     icon: ClipboardList,
-    roles: ['ADMIN', 'Manager', 'Service Advisor', 'Technician'] // All roles can access job cards (filtered by role on backend)
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles can access job cards (filtered by role on backend)
   },
   {
     title: 'Appointments',
     href: ROUTES.APPOINTMENTS,
     icon: Calendar,
-    roles: ['ADMIN', 'Manager', 'Service Advisor'] // Technicians don't need appointment management
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR'] // Technicians don't need appointment management
+  },
+    {
+        title: 'Parts Requisition',
+        href: ROUTES.PARTS_REQUISITION,
+        icon: Boxes,
+        roles: ['ADMIN', 'Stores'] // Only Admin and Stores can access parts requisition management
+    },
+
+  {
+    title: 'Quotations',
+    href: ROUTES.QUOTATIONS,
+    icon: Calculator,
+    roles: ['ADMIN', 'SERVICE_ADVISOR'] // Only Admin and Service Advisor can access quotations
   },
   {
     title: 'Invoices',
     href: ROUTES.INVOICES,
     icon: FileText,
-    roles: ['ADMIN', 'Service Advisor'] // Only Admin and Service Advisor can access financial data
+    roles: ['ADMIN', 'SERVICE_ADVISOR'] // Only Admin and Service Advisor can access financial data
   },
   {
     title: 'Inventory',

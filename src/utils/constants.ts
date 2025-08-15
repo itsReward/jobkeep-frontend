@@ -12,7 +12,9 @@ export const ROUTES = {
   EMPLOYEES: '/employees',
   JOBCARDS: '/jobcards',
   APPOINTMENTS: '/appointments',
-  INVOICES: '/invoices',
+    PARTS_REQUISITION: '/parts-requisition',
+    INVOICES: '/invoices',
+  QUOTATIONS: '/quotations',
   REPORTS: '/reports',
   SETTINGS: '/settings',
 } as const
@@ -65,6 +67,33 @@ export const INVOICE_STATUSES = {
   CANCELLED: 'CANCELLED',
 } as const
 
+export const QUOTATION_STATUSES = {
+  DRAFT: 'DRAFT',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  EXPIRED: 'EXPIRED',
+  CONVERTED: 'CONVERTED',
+} as const
+
+export const QUOTATION_STATUS_LABELS = {
+  [QUOTATION_STATUSES.DRAFT]: 'Draft',
+  [QUOTATION_STATUSES.PENDING]: 'Pending',
+  [QUOTATION_STATUSES.APPROVED]: 'Approved',
+  [QUOTATION_STATUSES.REJECTED]: 'Rejected',
+  [QUOTATION_STATUSES.EXPIRED]: 'Expired',
+  [QUOTATION_STATUSES.CONVERTED]: 'Converted',
+} as const
+
+export const QUOTATION_STATUS_COLORS = {
+  [QUOTATION_STATUSES.DRAFT]: 'secondary',
+  [QUOTATION_STATUSES.PENDING]: 'warning',
+  [QUOTATION_STATUSES.APPROVED]: 'success',
+  [QUOTATION_STATUSES.REJECTED]: 'error',
+  [QUOTATION_STATUSES.EXPIRED]: 'gray',
+  [QUOTATION_STATUSES.CONVERTED]: 'blue',
+} as const
+
 export const PRIORITIES = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
@@ -93,7 +122,19 @@ export const DEFAULT_TAX_RATE = 15 // 15% for Zimbabwe
 export const DEFAULT_PAYMENT_TERMS = 'Net 30'
 export const INVOICE_NUMBER_PREFIX = 'INV'
 
+// Quotation constants
+export const DEFAULT_QUOTATION_TAX_RATE = 15 // 15% for Zimbabwe
+export const DEFAULT_QUOTATION_VALID_DAYS = 30 // 30 days validity
+export const QUOTATION_NUMBER_PREFIX = 'QUO'
+
+
 export const INVOICE_EXPORT_FORMATS = {
+  PDF: 'pdf',
+  EXCEL: 'excel',
+  CSV: 'csv'
+} as const
+
+export const QUOTATION_EXPORT_FORMATS = {
   PDF: 'pdf',
   EXCEL: 'excel',
   CSV: 'csv'
@@ -110,4 +151,41 @@ export const INVOICE_TEMPLATES = {
   STANDARD: 'standard',
   DETAILED: 'detailed',
   SIMPLE: 'simple'
+} as const
+
+export const QUOTATION_TEMPLATES = {
+  STANDARD: 'standard',
+  DETAILED: 'detailed',
+  SIMPLE: 'simple'
+} as const
+
+
+export const PART_REQUISITION_STATUSES = {
+    REQUESTED: 'REQUESTED',
+    APPROVED: 'APPROVED',
+    DISBURSED: 'DISBURSED',
+    USED: 'USED',
+    PARTIALLY_USED: 'PARTIALLY_USED',
+    NOT_AVAILABLE: 'NOT_AVAILABLE',
+    REJECTED: 'REJECTED',
+} as const
+
+export const PART_REQUISITION_STATUS_LABELS = {
+    [PART_REQUISITION_STATUSES.REQUESTED]: 'Requested',
+    [PART_REQUISITION_STATUSES.APPROVED]: 'Approved',
+    [PART_REQUISITION_STATUSES.DISBURSED]: 'Disbursed',
+    [PART_REQUISITION_STATUSES.USED]: 'Used',
+    [PART_REQUISITION_STATUSES.PARTIALLY_USED]: 'Partially Used',
+    [PART_REQUISITION_STATUSES.NOT_AVAILABLE]: 'Not Available',
+    [PART_REQUISITION_STATUSES.REJECTED]: 'Rejected',
+} as const
+
+export const PART_REQUISITION_STATUS_COLORS = {
+    [PART_REQUISITION_STATUSES.REQUESTED]: 'warning',
+    [PART_REQUISITION_STATUSES.APPROVED]: 'secondary',
+    [PART_REQUISITION_STATUSES.DISBURSED]: 'blue',
+    [PART_REQUISITION_STATUSES.USED]: 'success',
+    [PART_REQUISITION_STATUSES.PARTIALLY_USED]: 'success',
+    [PART_REQUISITION_STATUSES.NOT_AVAILABLE]: 'gray',
+    [PART_REQUISITION_STATUSES.REJECTED]: 'error',
 } as const

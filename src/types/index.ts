@@ -3,14 +3,14 @@ export interface User {
   id: string
   username: string
   email: string
-  userRole: 'ADMIN' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
+  userRole: 'ADMIN' | 'MANAGER' | 'SERVICE_ADVISOR' | 'TECHNICIAN' | 'STORES'
   employeeId: string
   employeeName: string
   employeeSurname: string
 }
 
 // Role-based access control types
-export type UserRole = 'ADMIN' | 'Manager' | 'Service Advisor' | 'Technician' | 'Stores'
+export type UserRole = 'ADMIN' | 'MANAGER' | 'SERVICE_ADVISOR' | 'TECHNICIAN' | 'STORES'
 
 export interface RolePermissions {
   canAccessClients: boolean
@@ -37,7 +37,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewAllJobCards: true,
     canApproveRequisitions: true,
   },
-  Manager: {
+  MANAGER: {
     canAccessClients: false,
     canAccessEmployees: true, // Read only
     canAccessFinancials: false,
@@ -48,7 +48,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewAllJobCards: true,
     canApproveRequisitions: true,
   },
-  'Service Advisor': {
+  SERVICE_ADVISOR: {
     canAccessClients: true,
     canAccessEmployees: false,
     canAccessFinancials: true, // Own job cards only
@@ -59,7 +59,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewAllJobCards: false, // Own job cards only
     canApproveRequisitions: false,
   },
-  Technician: {
+  TECHNICIAN: {
     canAccessClients: false,
     canAccessEmployees: false,
     canAccessFinancials: false,
@@ -70,7 +70,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewAllJobCards: false, // Assigned job cards only
     canApproveRequisitions: false,
   },
-  Stores: {
+  STORES: {
     canAccessClients: false,
     canAccessEmployees: false,
     canAccessFinancials: false,
@@ -392,3 +392,6 @@ export interface BulkImportResult {
   errorCount: number
   errors: string[]
 }
+
+// Re-export quotation types
+export * from './quotation'

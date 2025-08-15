@@ -38,7 +38,7 @@ export const usePermissions = (): UsePermissionsReturn => {
         isAdmin: userRole === 'ADMIN',
         isManager: userRole === 'Manager',
         isServiceAdvisor: userRole === 'SERVICE_ADVISOR',
-        isTechnician: userRole === 'Technician',
+        isTechnician: userRole === 'TECHNICIAN',
         isStores: userRole === 'Stores',
     }), [userRole])
 

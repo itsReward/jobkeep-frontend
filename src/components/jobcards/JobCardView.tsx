@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Loading } from '@/components/ui/Loading'
 import { TimesheetModal } from '@/components/timesheets/TimesheetModal'
 import { CommentsPanel } from '@/components/comments/CommentsPanel'
+import { PartsRequisitionSection } from '@/components/jobcards/PartsRequisitionSection'
 import {
     useJobCard,
     useUpdateJobCardStatus,
@@ -53,6 +54,8 @@ interface JobCardViewProps {
     jobCardId: string
     onBack: () => void
     onEdit?: (jobCard: JobCard) => void
+    currentUserId?: string
+    currentUserRole?: string
 }
 
 export const JobCardView: React.FC<JobCardViewProps> = ({
@@ -203,6 +206,9 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
         }) : []
 
     const availableStatuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED']
+
+    // Get current job card status string for parts requisition
+    const jobCardStatusString = jobCard.dateAndTimeClosed ? 'CLOSED' : jobCard.dateAndTimeFrozen ? 'FROZEN' : 'OPEN'
 
     return (
         <div className="flex h-full">
@@ -518,6 +524,14 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Parts Requisitions Section - Added above Timesheets */}
+                <PartsRequisitionSection
+                    jobCardId={jobCard.id}
+                    jobCardStatus={jobCardStatusString}
+                    currentUserRole={currentUserRole}
+                    currentUserId={currentUserId}
+                />
 
                 {/* Timesheets */}
                 <Card>
