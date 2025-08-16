@@ -14,7 +14,8 @@ import {
   Wrench,
   ShoppingCart,
   Package,
-  Calculator
+  Calculator,
+    Boxes
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROUTES } from '@/utils/constants'

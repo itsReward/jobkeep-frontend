@@ -13,7 +13,7 @@ import {
 
 export class PartRequisitionService extends ApiService {
     constructor() {
-        super('/jobcards/parts-requisition')
+        super('/api/jobcards/parts-requisition')
     }
 
     // Create parts requisition

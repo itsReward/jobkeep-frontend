@@ -32,7 +32,7 @@ import {
     PART_REQUISITION_STATUS_COLORS,
     CreatePartRequisitionDto,
     ProductSearchResult
-} from '@/types/partsRequisition'
+} from '@/types/partRequisition'
 import { formatCurrency, formatDateTime } from '@/utils/formatters'
 
 interface PartsRequisitionSectionProps {
