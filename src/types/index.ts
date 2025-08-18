@@ -7,6 +7,12 @@ export interface User {
   employeeId: string
   employeeName: string
   employeeSurname: string
+    employeeRole: string
+    rating: number
+    employeeDepartment: string
+    phoneNumber: string
+    homeAddress: string
+    active: boolean
 }
 
 // Role-based access control types

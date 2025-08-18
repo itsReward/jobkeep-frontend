@@ -12,7 +12,7 @@ import {
   BarChart3,
   Settings,
   Wrench,
-  ShoppingCart,
+  Shield,
   Package,
   Calculator,
     Boxes
@@ -90,6 +90,12 @@ const menuItems = [
     icon: BarChart3,
     roles: ['ADMIN', 'Manager'] // Only Admin and Manager can access reports
   },
+    {
+        title: 'User Management',
+        href: '/admin/users',
+        icon: Shield,
+        roles: ['ADMIN'] // Only Admin can access user management
+    },
   {
     title: 'Settings',
     href: ROUTES.SETTINGS,

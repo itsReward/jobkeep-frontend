@@ -19,6 +19,8 @@ import {ApiDebugTrigger} from "@/components/debug/ApiDebugPanel.tsx";
 import InvoiceList from "@/pages/invoices/InvoiceList.tsx";
 import QuotationList from "@/pages/quotations/QuotationList.tsx";
 import PartsRequisitionList from "@/pages/partsRequisition/PartsRequisitionList.tsx";
+import { UserView } from '@/pages/users/UserView';
+import UserManagement from '@/pages/users/UserManagement';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -143,6 +145,15 @@ function App() {
                                     }
                                 />
 
+                                <Route
+                                    path="/profile"
+                                    element={
+                                        <ProtectedRoute>
+                                            <UserView />
+                                        </ProtectedRoute>
+                                    }
+                                />
+
                                 {/* Role-based protected routes */}
                                 <Route
                                     path="/clients"
@@ -226,6 +237,15 @@ function App() {
                                                 <h1 className="text-2xl font-bold">Reports</h1>
                                                 <p className="text-gray-600">Coming soon...</p>
                                             </div>
+                                        </ProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/admin/users"
+                                    element={
+                                        <ProtectedRoute allowedRoles={["ADMIN"]}>
+                                            <UserManagement />
                                         </ProtectedRoute>
                                     }
                                 />

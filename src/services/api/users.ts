@@ -6,10 +6,16 @@ export interface User {
     id: string
     username: string
     email: string
-    userRole: string
+    userRole: 'ADMIN' | 'SUPERVISOR' | 'Manager' | 'SERVICE_ADVISOR' | 'TECHNICIAN' | 'STORES' | 'CLIENT'
     employeeId: string
     employeeName: string
     employeeSurname: string
+    employeeRole: string
+    rating: number
+    employeeDepartment: string
+    phoneNumber: string
+    homeAddress: string
+    active: boolean
 }
 
 export interface CreateUserRequest {
@@ -20,7 +26,21 @@ export interface CreateUserRequest {
     employeeId: string
 }
 
-export interface UpdateUserRequest extends Partial<CreateUserRequest> {}
+export interface UpdateUserRequest {
+    username?: string
+    email?: string
+    userRole?: string
+    employeeId?: string
+    password?: string
+}
+
+export interface UpdateProfileRequest {
+    username?: string
+    email?: string
+    phoneNumber?: string
+    homeAddress?: string
+    password?: string
+}
 
 export class UserService extends ApiService {
     constructor() {
@@ -58,6 +78,12 @@ export class UserService extends ApiService {
     async update(id: string, user: UpdateUserRequest): Promise<User> {
         return this.put<User>(`/update/${id}`, user)
     }
+
+    // Update own profile
+    async updateProfile(data: UpdateProfileRequest): Promise<User> {
+        return this.put('/me', data)
+    }
+
 
     async delete(id: string): Promise<{ message: string }> {
         return super.delete<{ message: string }>(`/delete/${id}`)
