@@ -10,6 +10,7 @@ export interface CreateJobCardRequest {
     estimatedTimeOfCompletion: string
     priority: boolean
     jobCardDeadline: string
+    dateAndTimeIn?: string
 }
 
 export interface UpdateJobCardRequest extends Partial<CreateJobCardRequest> {
