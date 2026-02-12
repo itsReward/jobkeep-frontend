@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, Button, Input, Loading } from '@/compone
 import { CreateUserRequest, UpdateUserRequest, User } from '@/services/api/users'
 import { useCreateUser, useUpdateUser } from '@/hooks/useUsers'
 import { useEmployees } from '@/hooks/useEmployees'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { X, ChevronDown, Eye, EyeOff } from 'lucide-react'
 
 interface UserFormProps {
@@ -78,7 +79,7 @@ export const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) 
     const password = watch('password')
 
     // Get selected employee details
-    const selectedEmployee = employees?.find(emp => emp.id === selectedEmployeeId)
+    const selectedEmployee = employees?.find(emp => emp.employeeId === selectedEmployeeId)
 
     const onSubmit = async (data: CreateUserRequest & { confirmPassword: string }) => {
         try {
@@ -240,10 +241,10 @@ export const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) 
                                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                             {employees?.map((employee) => (
                                                 <button
-                                                    key={employee.id}
+                                                    key={employee.employeeId}
                                                     type="button"
                                                     onClick={() => {
-                                                        setValue('employeeId', employee.id)
+                                                        setValue('employeeId', employee.employeeId)
                                                         setShowEmployeeDropdown(false)
                                                     }}
                                                     className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
