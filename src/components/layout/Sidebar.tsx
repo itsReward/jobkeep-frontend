@@ -27,7 +27,7 @@ const menuItems = [
     title: 'Dashboard',
     href: ROUTES.DASHBOARD,
     icon: LayoutDashboard,
-    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles can access dashboard
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN', 'SUPERVISOR'] // All roles can access dashboard
   },
   {
     title: 'Clients',
@@ -39,7 +39,7 @@ const menuItems = [
     title: 'Vehicles',
     href: ROUTES.VEHICLES,
     icon: Car,
-    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles except for specific restrictions
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN', 'SUPERVISOR'] // All roles except for specific restrictions
   },
   {
     title: 'Employees',
@@ -51,7 +51,7 @@ const menuItems = [
     title: 'Job Cards',
     href: ROUTES.JOBCARDS,
     icon: ClipboardList,
-    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN'] // All roles can access job cards (filtered by role on backend)
+    roles: ['ADMIN', 'Manager', 'SERVICE_ADVISOR', 'TECHNICIAN', 'SUPERVISOR'] // All roles can access job cards (filtered by role on backend)
   },
   {
     title: 'Appointments',

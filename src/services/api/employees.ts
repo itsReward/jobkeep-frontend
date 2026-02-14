@@ -41,12 +41,18 @@ export class EmployeeService extends ApiService {
 
     // Helper method to get multiple employees by IDs
     async getMultipleByIds(ids: string[]): Promise<Employee[]> {
+        console.log('getMultipleByIds for IDs:', ids)
         const employees = await Promise.all(
-            ids.map(id => this.getById(id).catch(() => null))
+            ids.map(id => this.getById(id).catch((err) => {
+                console.error(`Failed to fetch employee ${id}:`, err)
+                return null
+            }))
         )
 
         // Filter out null values (failed requests)
-        return employees.filter(emp => emp !== null) as Employee[]
+        const result = employees.filter(emp => emp !== null) as Employee[]
+        console.log(`Fetched ${result.length} employees successfully`)
+        return result
     }
 }
 

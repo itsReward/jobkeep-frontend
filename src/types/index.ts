@@ -43,6 +43,17 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewAllJobCards: true,
     canApproveRequisitions: true,
   },
+  SUPERVISOR: {
+    canAccessClients: true,
+    canAccessEmployees: true,
+    canAccessFinancials: false,
+    canAccessReports: false,
+    canAccessSettings: false,
+    canManageUsers: false,
+    canManageInventory: false,
+    canViewAllJobCards: true,
+    canApproveRequisitions: false,
+  },
   MANAGER: {
     canAccessClients: false,
     canAccessEmployees: true, // Read only
@@ -155,6 +166,7 @@ export interface JobCard {
   priority: boolean
   jobCardDeadline: string
   timesheets: Timesheet[]
+  technicians?: JobCardTechnician[]
   stateChecklistId?: string
   serviceChecklistId?: string
   controlChecklistId?: string

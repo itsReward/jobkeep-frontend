@@ -24,8 +24,8 @@ class APILogger {
 
     constructor() {
         // Check if we're in development mode
-        this.enableConsoleLogging = import.meta.env.DEV || localStorage.getItem('api-debug') === 'true'
-        this.enableDetailedLogging = localStorage.getItem('api-detailed-debug') === 'true'
+        this.enableConsoleLogging = true // Force enable for debugging
+        this.enableDetailedLogging = true // Force enable for debugging
     }
 
     private generateId(): string {

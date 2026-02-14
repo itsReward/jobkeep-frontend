@@ -43,6 +43,7 @@ import {
     useCloseJobCard,
     useSetJobCardPriority
 } from '@/hooks/useJobCards'
+import { useEmployees } from '@/hooks/useEmployees'
 import {
     useTimesheetsByJobCard,
     useJobCardTechnicians,
@@ -78,8 +79,19 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
     const removeTechnician = useRemoveTechnician()
 
     const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+    const [showTechnicianDropdown, setShowTechnicianDropdown] = useState(false)
     const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null)
     const [showTimesheetModal, setShowTimesheetModal] = useState(false)
+
+    const { data: employees = [] } = useEmployees()
+    const technicianOptions = employees
+        .filter(e => e.employeeRole?.toLowerCase() === 'technician')
+        .map(e => ({
+            id: e.employeeId,
+            employeeId: e.employeeId,
+            name: `${e.employeeName} ${e.employeeSurname}`
+        }))
+        .filter(opt => !technicians?.some(t => t.employeeId === opt.employeeId))
 
     if (isLoading) {
         return (
@@ -187,6 +199,16 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
     }
 
     // Handle technician management
+    const handleAddTechnician = (technicianId: string) => {
+        console.log('handleAddTechnician called with:', technicianId)
+        if (!technicianId) {
+            console.error('handleAddTechnician received undefined or empty technicianId')
+            return
+        }
+        assignTechnician.mutate({ jobCardId: jobCard.id, technicianId })
+        setShowTechnicianDropdown(false)
+    }
+
     const handleRemoveTechnician = (technicianId: string) => {
         removeTechnician.mutate({ jobCardId: jobCard.id, technicianId })
     }
@@ -442,15 +464,36 @@ export const JobCardView: React.FC<JobCardViewProps> = ({
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <label className="text-sm font-medium text-gray-600">Technicians</label>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 relative">
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => {/* Handle add technician */}}
+                                            onClick={() => setShowTechnicianDropdown(!showTechnicianDropdown)}
+                                            disabled={assignTechnician.isPending}
                                         >
                                             <Plus className="h-4 w-4" />
                                             Add Technician
                                         </Button>
+
+                                        {showTechnicianDropdown && (
+                                            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                                                {technicianOptions.length > 0 ? (
+                                                    technicianOptions.map((opt) => (
+                                                        <button
+                                                            key={opt.employeeId}
+                                                            onClick={() => handleAddTechnician(opt.employeeId)}
+                                                            className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm border-b last:border-0 border-gray-100"
+                                                        >
+                                                            {opt.name}
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-4 py-3 text-sm text-gray-500 italic">
+                                                        No more technicians available
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

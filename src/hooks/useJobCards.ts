@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { jobCardService, CreateJobCardRequest, UpdateJobCardRequest, JobCardFilters } from '@/services/api/jobCards'
+import { jobCardTechniciansService } from '@/services/api/jobCardTechnicians'
 import toast from 'react-hot-toast'
 
 // Query keys
@@ -323,6 +324,49 @@ export const useSetJobCardPriority = () => {
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Failed to update priority', {
+                icon: '❌',
+                style: {
+                    borderRadius: '16px',
+                    background: '#FFEBEE',
+                    color: '#C62828',
+                }
+            })
+        },
+    })
+}
+
+// Assign technicians mutation
+export const useAssignTechnicians = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async ({ id, technicianIds }: { id: string; technicianIds: string[] }) => {
+            console.log('useAssignTechnicians mutation started:', { id, technicianIds })
+            // Assign each technician one by one as the endpoint handles single technician
+            const assignments = technicianIds.map(techId => {
+                console.log(`Assigning tech ${techId} to job card ${id}`)
+                return jobCardTechniciansService.assignTechnician(id, techId)
+            })
+            await Promise.all(assignments)
+            return jobCardService.getById(id)
+        },
+        onSuccess: (updatedJobCard, { id }) => {
+            queryClient.setQueryData(jobCardKeys.detail(id), updatedJobCard)
+            queryClient.invalidateQueries({ queryKey: jobCardKeys.lists() })
+            // Also invalidate technicians list if it exists in useTimesheets
+            queryClient.invalidateQueries({ queryKey: ['technicians', 'jobCard', id] })
+
+            toast.success('Technicians assigned successfully', {
+                icon: '🛠️',
+                style: {
+                    borderRadius: '16px',
+                    background: '#E8F5E8',
+                    color: '#2E7D2E',
+                }
+            })
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to assign technicians', {
                 icon: '❌',
                 style: {
                     borderRadius: '16px',

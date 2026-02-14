@@ -10,9 +10,14 @@ export class JobCardTechniciansService extends ApiService {
         return this.get<string[]>(`/getAllJobCardTechnicians/${jobCardId}`)
     }
 
-    async assignTechnician(jobCardId: string, technicianId: string): Promise<void> {
-        // Assuming there's an endpoint to assign technicians
-        return this.post<void>('/assign', { jobCardId, technicianId })
+    async assignTechnician(jobCardId: string, employeeId: string): Promise<void> {
+        console.log('Sending technician assignment:', { jobCardId, technicianId: employeeId })
+        // Validate that we have both IDs
+        if (!jobCardId || !employeeId) {
+            console.error('Missing jobCardId or technicianId for assignment:', { jobCardId, technicianId: employeeId })
+            throw new Error('Missing jobCardId or technicianId for assignment')
+        }
+        return this.post<void>('/add-technician', { jobCardId, technicianId: employeeId })
     }
 
     async removeTechnician(jobCardId: string, technicianId: string): Promise<void> {

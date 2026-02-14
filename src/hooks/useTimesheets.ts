@@ -57,7 +57,7 @@ export const useJobCardTechnicians = (jobCardId: string) => {
 
             // Map to JobCardTechnician format
             return employees.map(emp => ({
-                employeeId: emp.id,
+                employeeId: emp.employeeId,
                 employeeName: emp.employeeName,
                 employeeSurname: emp.employeeSurname
             }))
@@ -179,8 +179,10 @@ export const useAssignTechnician = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ jobCardId, technicianId }: { jobCardId: string; technicianId: string }) =>
-            jobCardTechniciansService.assignTechnician(jobCardId, technicianId),
+        mutationFn: ({ jobCardId, technicianId }: { jobCardId: string; technicianId: string }) => {
+            console.log('useAssignTechnician mutation started:', { jobCardId, technicianId })
+            return jobCardTechniciansService.assignTechnician(jobCardId, technicianId)
+        },
         onSuccess: (_, { jobCardId }) => {
             // Invalidate technicians for the job card
             queryClient.invalidateQueries({

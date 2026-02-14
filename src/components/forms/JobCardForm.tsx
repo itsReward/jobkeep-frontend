@@ -1,13 +1,13 @@
 // src/components/forms/JobCardForm.tsx
 import React, { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { X, Save, AlertTriangle } from 'lucide-react'
+import { X, Save, AlertTriangle, Plus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { CreateJobCardRequest } from '@/services/api/jobCards'
-import { useCreateJobCard, useUpdateJobCard } from '@/hooks/useJobCards'
+import { useCreateJobCard, useUpdateJobCard, useAssignTechnicians } from '@/hooks/useJobCards'
 import { useClients } from '@/hooks/useClients'
 import { useVehiclesByClient } from '@/hooks/useVehicles'
 import { useEmployees } from '@/hooks/useEmployees'
@@ -22,6 +22,7 @@ interface JobCardFormProps {
 
 interface FormData extends CreateJobCardRequest {
     id?: string
+    technicianIds?: string[]
 }
 
 export const JobCardForm: React.FC<JobCardFormProps> = ({
@@ -32,7 +33,10 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
     const isEditing = !!jobCard
     const createJobCard = useCreateJobCard()
     const updateJobCard = useUpdateJobCard()
+    const assignTechnicians = useAssignTechnicians()
     const { user } = useAuthLogic()
+
+    const canAssignTechnicians = user?.userRole === 'ADMIN' || user?.userRole === 'SUPERVISOR'
 
     const {
         register,
@@ -53,6 +57,7 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
             priority: false,
             jobCardDeadline: '',
             dateAndTimeIn: '',
+            technicianIds: [],
         },
     })
 
@@ -96,22 +101,29 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
     }))
 
     const serviceAdvisorOptions = employees
-        .filter(e => e.employeeRole === 'serviceAdvisor')
+        .filter(e => e.employeeRole?.toLowerCase() === 'serviceadvisor' || e.employeeRole?.toLowerCase() === 'service_advisor')
         .map(e => ({
-            value: e.id,
+            value: e.employeeId,
             label: `${e.employeeName} ${e.employeeSurname}`
         }))
 
     const supervisorOptions = employees
-        .filter(e => e.employeeRole === 'supervisor')
+        .filter(e => e.employeeRole?.toLowerCase() === 'supervisor')
         .map(e => ({
-            value: e.id,
+            value: e.employeeId,
+            label: `${e.employeeName} ${e.employeeSurname}`
+        }))
+
+    const technicianOptions = employees
+        .filter(e => e.employeeRole?.toLowerCase() === 'technician')
+        .map(e => ({
+            value: e.employeeId,
             label: `${e.employeeName} ${e.employeeSurname}`
         }))
 
     // Default Service Advisor to current user if they are a SERVICE_ADVISOR
     useEffect(() => {
-        if (!isEditing && user && user.userRole === 'serviceAdvisor' && user.employeeId) {
+        if (!isEditing && user && (user.userRole?.toLowerCase() === 'serviceadvisor' || user.userRole?.toLowerCase() === 'service_advisor') && user.employeeId) {
             setValue('serviceAdvisorId', user.employeeId)
         }
     }, [isEditing, user, setValue])
@@ -119,16 +131,18 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
     // Populate form when editing
     useEffect(() => {
         if (jobCard) {
+            console.log('Populating JobCardForm with:', jobCard)
             reset({
                 jobCardName: jobCard.jobCardName,
                 vehicleId: jobCard.vehicleId,
                 clientId: jobCard.clientId,
                 serviceAdvisorId: jobCard.serviceAdvisorId,
                 supervisorId: jobCard.supervisorId,
-                estimatedTimeOfCompletion: jobCard.estimatedTimeOfCompletion.split('T')[0],
+                estimatedTimeOfCompletion: jobCard.estimatedTimeOfCompletion ? jobCard.estimatedTimeOfCompletion.split('T')[0] : '',
                 priority: jobCard.priority,
-                jobCardDeadline: jobCard.jobCardDeadline.split('T')[0],
+                jobCardDeadline: jobCard.jobCardDeadline ? jobCard.jobCardDeadline.split('T')[0] : '',
                 dateAndTimeIn: jobCard.dateAndTimeIn ? jobCard.dateAndTimeIn.substring(0, 16) : '',
+                technicianIds: jobCard.technicians?.map(t => t.employeeId) || jobCard.timesheets?.map(t => t.technicianId) || [],
             })
         }
     }, [jobCard, reset])
@@ -147,8 +161,24 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
                     id: jobCard.id,
                     jobCard: formattedData,
                 })
+
+                // If technicians were changed, assign them
+                if (data.technicianIds && data.technicianIds.length > 0) {
+                    await assignTechnicians.mutateAsync({
+                        id: jobCard.id,
+                        technicianIds: data.technicianIds
+                    })
+                }
             } else {
-                await createJobCard.mutateAsync(formattedData)
+                const newJobCard = await createJobCard.mutateAsync(formattedData)
+
+                // If technicians were selected during creation
+                if (data.technicianIds && data.technicianIds.length > 0) {
+                    await assignTechnicians.mutateAsync({
+                        id: newJobCard.id,
+                        technicianIds: data.technicianIds
+                    })
+                }
             }
 
             onSuccess?.()
@@ -341,6 +371,63 @@ export const JobCardForm: React.FC<JobCardFormProps> = ({
                                 Mark as Priority Job Card
                             </label>
                         </div>
+
+                        {canAssignTechnicians && (
+                            <div className="space-y-4 p-4 rounded-lg border border-gray-200 bg-gray-50/50">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                        <UserPlus className="h-4 w-4 text-primary-500" />
+                                        Assign Technicians
+                                    </h3>
+                                </div>
+
+                                <Controller
+                                    name="technicianIds"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-3">
+                                            <div className="flex flex-wrap gap-2">
+                                                {field.value?.map((techId) => {
+                                                    const tech = technicianOptions.find(t => t.value === techId)
+                                                    return (
+                                                        <div 
+                                                            key={techId}
+                                                            className="flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-700"
+                                                        >
+                                                            {tech?.label || 'Unknown Technician'}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    field.onChange(field.value?.filter(id => id !== techId))
+                                                                }}
+                                                                className="hover:text-error-500"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+
+                                            <SearchableSelect
+                                                options={technicianOptions.filter(opt => !field.value?.includes(opt.value))}
+                                                value=""
+                                                onValueChange={(val) => {
+                                                    if (val) {
+                                                        const currentIds = field.value || []
+                                                        if (!currentIds.includes(val)) {
+                                                            field.onChange([...currentIds, val])
+                                                        }
+                                                    }
+                                                }}
+                                                placeholder="Add Technician..."
+                                                isLoading={employeesLoading}
+                                            />
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        )}
 
                         {watchPriority && (
                             <div className="p-3 bg-warning-50 border border-warning-200 rounded-lg">
